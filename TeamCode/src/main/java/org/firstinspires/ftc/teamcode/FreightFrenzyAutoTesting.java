@@ -9,7 +9,6 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.hardware.bosch.JustLoggingAccelerationIntegrator;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcore.external.ClassFactory;
@@ -20,11 +19,21 @@ import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
 import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 //import org.firstinspires.ftc.robotcore.external.navigation.RelicRecoveryVuMark; <- this is why I need to go through imports
-import org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocalizer;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
-import org.firstinspires.ftc.robotcore.external.tfod.TFObjectDetector;
-import org.firstinspires.ftc.robotcore.external.tfod.Recognition;
+import org.opencv.core.Core;
+import org.opencv.core.Mat;
+import org.opencv.core.MatOfPoint;
+import org.opencv.core.Scalar;
+import org.opencv.imgproc.Imgproc;
+import org.openftc.easyopencv.OpenCvCamera;
+import org.openftc.easyopencv.OpenCvCameraFactory;
+import org.openftc.easyopencv.OpenCvCameraRotation;
+import org.openftc.easyopencv.OpenCvPipeline;
+import org.openftc.easyopencv.OpenCvWebcam;
 
+import org.firstinspires.ftc.teamcode.FFHardwareMap;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -32,50 +41,44 @@ import java.util.Locale;
 @Disabled  //comment out this line before using
 public class FreightFrenzyAutoTesting extends LinearOpMode {
     private ElapsedTime runtime = new ElapsedTime();
-    private static final String TFOD_MODEL_ASSET = "UltimateGoal.tflite";
-    private static final String LABEL_FIRST_ELEMENT = "Quad";
-    private static final String LABEL_SECOND_ELEMENT = "Single";
-
-    private static final String VUFORIA_KEY =
-            "AQdreXP/////AAABmZt6Oecz+kEzpK0JGPmBsiNN7l/NAvoL0zpZPFQAslTHUcNYg++t82d9o6emZcSfRJM36o491JUmYS/5qdxxP235BssGslVIMSJCT7vNZ2iQW2pwj6Lxtw/oqvCLtgGRPxUyVSC1u5QHi+Siktg3e4g9rYzoQ2+kzv2chS8TnNooSoF6YgQh4FXqCYRizfbYkjVWtx/DtIigXy+TrXNn84yXbl66CnjNy2LFaOdBFrl315+A79dEYJ+Pl0b75dzncQcrt/aulSBllkA4f03FxeN3Ck1cx9twVFatjOCFxPok0OApMyo1kcARcPpemk1mqF2yf2zJORZxF0H+PcRkS2Sv92UpSEq/9v+dYpruj/Vr";
-    // Declare OpMode members.
-
-    private VuforiaLocalizer vuforia;
-    private TFObjectDetector tfod;
 
     //Declare Sensors
     BNO055IMU imu;
     Orientation angles;
     Acceleration gravity;
 
+    OpenCvWebcam webcam;
+    StageSwitchingPipeline StageSwitchingPipeline; //used to be lowercase s, idk why so i changed it
+
+    FFHardwareMap robot = new FFHardwareMap();
+
     //USER GENERATED VALUES//
-    int zAccumulated;  //Total rotation left/right
     double headingResetValue;
-    int detv;
-    int heading;
+    double[] position = new double[2]; //x, y
+    double[] lastEncoderVals = new double[2]; //l, r
 
     @Override
     public void runOpMode() throws InterruptedException {
+        int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
+        webcam = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "Webcam 1"), cameraMonitorViewId);
 
-        initVuforia();
-        initTfod();
+        webcam.setPipeline(new StageSwitchingPipeline());
 
-        if (tfod != null) {
-            tfod.activate();
+        webcam.setMillisecondsPermissionTimeout(2500); // Timeout for obtaining permission is configurable. Set before opening.
+        webcam.openCameraDeviceAsync(new OpenCvCamera.AsyncCameraOpenListener()
+        {
+            @Override
+            public void onOpened()
+            {
+                webcam.startStreaming(640, 480, OpenCvCameraRotation.UPRIGHT);
+            }
 
-            // The TensorFlow software will scale the input images from the camera to a lower resolution.
-            // This can result in lower detection accuracy at longer distances (> 55cm or 22").
-            // If your target is at distance greater than 50 cm (20") you can adjust the magnification value
-            // to artificially zoom in to the center of image.  For best results, the "aspectRatio" argument
-            // should be set to the value of the images used to create the TensorFlow Object Detection model
-            // (typically 1.78 or 16/9).
+            @Override
+            public void onError(int errorCode)
+            {
 
-            // Uncomment the following line if you want to adjust the magnification and/or the aspect ratio of the input images.
-            //tfod.setZoom(2.5, 1.78);
-        }
-
-        telemetry.addData("Status", "Initialized");
-        telemetry.update();
+            }
+        });
 
         //CODE FOR SETTING UP AND INITIALIZING IMU
         BNO055IMU.Parameters parameters2 = new BNO055IMU.Parameters();
@@ -85,6 +88,8 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
         parameters2.loggingEnabled = true;
         parameters2.loggingTag = "IMU";
         parameters2.accelerationIntegrationAlgorithm = new JustLoggingAccelerationIntegrator();
+
+        robot.init(hardwareMap);
 
         //Reset Encoders
         idle();
@@ -99,25 +104,143 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
         composeTelemetry();
 
         //Initilization
-        int opState = 0;
-        int ringState = 0;
+        lastEncoderVals[0] = 0;
+        lastEncoderVals[1] = 0;
+        position[0] = 0;
+        position[1] = 0;
 
         // Wait for the game to start (driver presses PLAY)
         this.headingResetValue = this.getAbsoluteHeading();
         //waitForStart();
         runtime.reset();
-
+        telemetry.addData("Status", "Initialized");
+        telemetry.update();
         while (!opModeIsActive() && !isStopRequested()) {
             telemetry.addData("Status:", "Waiting for start command.");
             telemetry.update();
         };
         runtime.reset();
         while (opModeIsActive()) {
-
+            telemetry.addData("Num contours found", StageSwitchingPipeline.getNumContoursFound()); //used to be lowercase s
+            telemetry.update();
+            sleep(100);
         }
     }
 
     //FUNCTIONS
+    public void localize() {
+
+    }
+
+
+    //OPENCV SUFFERING
+    static class StageSwitchingPipeline extends OpenCvPipeline
+    {
+        Mat yCbCrChan2Mat = new Mat();
+        Mat thresholdMat50 = new Mat();
+        Mat thresholdMat100 = new Mat();
+        Mat thresholdMat150 = new Mat();
+        Mat thresholdMat200 = new Mat();
+        Mat contoursOnFrameMat = new Mat();
+        List<MatOfPoint> contoursList = new ArrayList<>();
+        int numContoursFound;
+
+        enum Stage
+        {
+            YCbCr_CHAN2,
+            THRESHOLD50,
+            THRESHOLD100,
+            THRESHOLD150,
+            THRESHOLD200,
+            CONTOURS_OVERLAYED_ON_FRAME,
+            RAW_IMAGE,
+        }
+
+        private Stage stageToRenderToViewport = Stage.YCbCr_CHAN2;
+        private Stage[] stages = Stage.values();
+
+        @Override
+        public void onViewportTapped()
+        {
+
+            int currentStageNum = stageToRenderToViewport.ordinal();
+
+            int nextStageNum = currentStageNum + 1;
+
+            if(nextStageNum >= stages.length)
+            {
+                nextStageNum = 0;
+            }
+
+            stageToRenderToViewport = stages[nextStageNum];
+        }
+
+        @Override
+        public Mat processFrame(Mat input)
+        {
+            contoursList.clear();
+
+            Imgproc.cvtColor(input, yCbCrChan2Mat, Imgproc.COLOR_RGB2YCrCb);
+            Core.extractChannel(yCbCrChan2Mat, yCbCrChan2Mat, 2);
+            Imgproc.threshold(yCbCrChan2Mat, thresholdMat50, 50, 255, Imgproc.THRESH_BINARY_INV);
+            Imgproc.threshold(yCbCrChan2Mat, thresholdMat100, 100, 255, Imgproc.THRESH_BINARY_INV);
+            Imgproc.threshold(yCbCrChan2Mat, thresholdMat150, 150, 255, Imgproc.THRESH_BINARY_INV);
+            Imgproc.threshold(yCbCrChan2Mat, thresholdMat200, 200, 255, Imgproc.THRESH_BINARY_INV);
+            Imgproc.findContours(thresholdMat100, contoursList, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
+            numContoursFound = contoursList.size();
+            input.copyTo(contoursOnFrameMat);
+            Imgproc.drawContours(contoursOnFrameMat, contoursList, -1, new Scalar(0, 0, 255), 3, 8);
+
+            switch (stageToRenderToViewport)
+            {
+                case YCbCr_CHAN2:
+                {
+                    return yCbCrChan2Mat;
+                }
+
+                case THRESHOLD50:
+                {
+                    return thresholdMat50;
+                }
+
+                case THRESHOLD100:
+                {
+                    return thresholdMat100;
+                }
+
+                case THRESHOLD150:
+                {
+                    return thresholdMat150;
+                }
+
+                case THRESHOLD200:
+                {
+                    return thresholdMat200;
+                }
+
+                case CONTOURS_OVERLAYED_ON_FRAME:
+                {
+                    return contoursOnFrameMat;
+                }
+
+                case RAW_IMAGE:
+                {
+                    return input;
+                }
+
+                default:
+                {
+                    return input;
+                }
+            }
+        }
+
+        public int getNumContoursFound()
+        {
+            return numContoursFound;
+        }
+    }
+
 
     //FUNCTIONS NEEDED BY THE GYRO
     String formatAngle(AngleUnit angleUnit, double angle) {
@@ -134,33 +257,6 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
 
     private double getRelativeHeading(){
         return this.getAbsoluteHeading() - this.headingResetValue;
-    }
-
-    private void initVuforia() {
-        /*
-         * Configure Vuforia by creating a Parameter object, and passing it to the Vuforia engine.
-    */
-        VuforiaLocalizer.Parameters parameters = new VuforiaLocalizer.Parameters();
-
-        parameters.vuforiaLicenseKey = VUFORIA_KEY;
-        parameters.cameraName = hardwareMap.get(WebcamName.class, "Webcam 1");
-
-        //  Instantiate the Vuforia engine
-        vuforia = ClassFactory.getInstance().createVuforia(parameters);
-
-        // Loading trackables is not necessary for the TensorFlow Object Detection engine.
-    }
-
-   /*
-     * Initialize the TensorFlow Object Detection engine.
-*/
-    private void initTfod() {
-        int tfodMonitorViewId = hardwareMap.appContext.getResources().getIdentifier(
-                "tfodMonitorViewId", "id", hardwareMap.appContext.getPackageName());
-        TFObjectDetector.Parameters tfodParameters = new TFObjectDetector.Parameters(tfodMonitorViewId);
-        tfodParameters.minResultConfidence = 0.8f;
-        tfod = ClassFactory.getInstance().createTFObjectDetector(tfodParameters, vuforia);
-        tfod.loadModelFromAsset(TFOD_MODEL_ASSET, LABEL_FIRST_ELEMENT, LABEL_SECOND_ELEMENT);
     }
 
     public void composeTelemetry() {
