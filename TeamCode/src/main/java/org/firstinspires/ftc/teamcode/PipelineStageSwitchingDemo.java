@@ -27,7 +27,7 @@ import java.util.List;
 public class PipelineStageSwitchingDemo extends LinearOpMode
 {
     OpenCvWebcam webcam;
-    StageSwitchingPipeline StageSwitchingPipeline;
+    StageSwitchingPipeline stageSwitchingPipeline;
 
     @Override
     public void runOpMode()
@@ -45,6 +45,7 @@ public class PipelineStageSwitchingDemo extends LinearOpMode
         // OR...  Do Not Activate the Camera Monitor View
         //webcam = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "Webcam 1"));
 
+        stageSwitchingPipeline = new StageSwitchingPipeline();
         /*
          * Specify the image processing pipeline we wish to invoke upon receipt
          * of a frame from the camera. Note that switching pipelines on-the-fly
@@ -83,7 +84,7 @@ public class PipelineStageSwitchingDemo extends LinearOpMode
                  * For a rear facing camera or a webcam, rotation is defined assuming the camera is facing
                  * away from the user.
                  */
-                webcam.startStreaming(640, 480, OpenCvCameraRotation.UPRIGHT);
+                webcam.startStreaming(320, 240, OpenCvCameraRotation.UPRIGHT);
             }
 
             @Override
@@ -100,7 +101,8 @@ public class PipelineStageSwitchingDemo extends LinearOpMode
 
         while (opModeIsActive())
         {
-            telemetry.addData("Num contours found", StageSwitchingPipeline.getNumContoursFound());
+            telemetry.addData("fps", webcam.getFps());
+            telemetry.addData("Num contours found", stageSwitchingPipeline.getNumContoursFound());
             telemetry.update();
             sleep(100);
         }

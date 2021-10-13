@@ -31,14 +31,14 @@ import org.openftc.easyopencv.OpenCvCameraRotation;
 import org.openftc.easyopencv.OpenCvPipeline;
 import org.openftc.easyopencv.OpenCvWebcam;
 
-import org.firstinspires.ftc.teamcode.FFHardwareMap;
+//import org.firstinspires.ftc.teamcode.FFHardwareMap;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-@Autonomous(name= "UltGoal_Test", group="14174")
-@Disabled  //comment out this line before using
+@Autonomous(name= "FreightFrenzyAutoTesting", group="14174")
+//@Disabled  //comment out this line before using
 public class FreightFrenzyAutoTesting extends LinearOpMode {
     private ElapsedTime runtime = new ElapsedTime();
 
@@ -48,7 +48,7 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
     Acceleration gravity;
 
     OpenCvWebcam webcam;
-    StageSwitchingPipeline StageSwitchingPipeline; //used to be lowercase s, idk why so i changed it
+    StageSwitchingPipeline stageSwitchingPipeline; //used to be lowercase s, idk why so i changed it
 
     FFHardwareMap robot = new FFHardwareMap();
 
@@ -100,7 +100,7 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
         parameters2.loggingTag = "IMU";
         parameters2.accelerationIntegrationAlgorithm = new JustLoggingAccelerationIntegrator();
 
-        robot.init(hardwareMap);
+        //robot.init(hardwareMap);
 
         //Reset Encoders
         idle();
@@ -128,12 +128,13 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
         };
         runtime.reset();
         while (opModeIsActive()) {
-            telemetry.addData("Num contours found", StageSwitchingPipeline.getNumContoursFound()); //used to be lowercase s
+            telemetry.addData("Num contours found", stageSwitchingPipeline.getNumContoursFound()); //used to be lowercase s
             telemetry.update();
-
-            localize();
+            sleep(100);
+            //localize();
         }
     }
+    /*
 
     //FUNCTIONS
     public void localize() {
@@ -163,6 +164,8 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
     public double getAccumulatedHeading(double angle) {
         return (revolutions*360) + angle;
     }
+
+     */
 
     //OPENCV SUFFERING
     static class StageSwitchingPipeline extends OpenCvPipeline
