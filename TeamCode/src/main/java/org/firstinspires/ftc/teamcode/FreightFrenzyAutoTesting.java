@@ -54,8 +54,19 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
 
     //USER GENERATED VALUES//
     double headingResetValue;
-    double[] position = new double[2]; //x, y
-    double[] lastEncoderVals = new double[2]; //l, r
+    double revolutions;
+
+    //localization
+    double[] position = {0, 0}; //x, y
+    double[] encoderVals = {0, 0}; //l, r
+    double[] lastEncoderVals = {0, 0}; //l, r
+    double[] encoderAndAngleDif = {0, 0, 0}; //delta l, delta r, delta a
+    double lastAngle = 0;
+    double angle = 0;
+    double lastAccumulatedAngle = 0;
+    double accumulatedAngle = 0;
+
+    double[] target = new double[3]; //x, y, a
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -104,10 +115,6 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
         composeTelemetry();
 
         //Initilization
-        lastEncoderVals[0] = 0;
-        lastEncoderVals[1] = 0;
-        position[0] = 0;
-        position[1] = 0;
 
         // Wait for the game to start (driver presses PLAY)
         this.headingResetValue = this.getAbsoluteHeading();
@@ -123,15 +130,39 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
         while (opModeIsActive()) {
             telemetry.addData("Num contours found", StageSwitchingPipeline.getNumContoursFound()); //used to be lowercase s
             telemetry.update();
-            sleep(100);
+
+            localize();
         }
     }
 
     //FUNCTIONS
     public void localize() {
+        //variable updates
+        encoderVals[0] = robot.bl.getCurrentPosition();
+        encoderVals[1] = robot.br.getCurrentPosition();
+        angle = getAbsoluteHeading();
+        if (angle - lastAngle < -300) { revolutions++; }
+        else if (angle - lastAngle > 300) {revolutions--;}
+        accumulatedAngle = getAccumulatedHeading(angle);
+
+        //actual localization
+        encoderAndAngleDif[0] = encoderVals[0] - lastEncoderVals[0];
+        encoderAndAngleDif[1] = encoderVals[1] - lastEncoderVals[1];
+        encoderAndAngleDif[2] = accumulatedAngle - lastAccumulatedAngle;
 
     }
 
+    public void setMotorPower(double l, double r) {
+        robot.fl.setPower(l);
+        robot.fr.setPower(r);
+        robot.bl.setPower(l);
+        robot.br.setPower(r);
+    }
+
+    //why does the hub normalize angles by default it is honestly a nightmare istg
+    public double getAccumulatedHeading(double angle) {
+        return (revolutions*360) + angle;
+    }
 
     //OPENCV SUFFERING
     static class StageSwitchingPipeline extends OpenCvPipeline

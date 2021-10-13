@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.hardware.modernrobotics.ModernRoboticsI2cRangeSensor;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -58,6 +59,11 @@ public class FFHardwareMap
         fl.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         br.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         bl.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+
+        fr.setDirection(DcMotorSimple.Direction.FORWARD);
+        fl.setDirection(DcMotorSimple.Direction.FORWARD);
+        br.setDirection(DcMotorSimple.Direction.FORWARD);
+        bl.setDirection(DcMotorSimple.Direction.FORWARD);
 
 
         //flyWheel.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
