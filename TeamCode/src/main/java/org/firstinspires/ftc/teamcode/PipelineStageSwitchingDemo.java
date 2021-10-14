@@ -96,7 +96,6 @@ public class PipelineStageSwitchingDemo extends LinearOpMode
             }
         });
 
-
         waitForStart();
 
         while (opModeIsActive())
@@ -104,7 +103,9 @@ public class PipelineStageSwitchingDemo extends LinearOpMode
             telemetry.addData("fps", webcam.getFps());
             telemetry.addData("Num contours found", stageSwitchingPipeline.getNumContoursFound());
             telemetry.update();
+
             sleep(100);
+
         }
     }
 
@@ -130,10 +131,10 @@ public class PipelineStageSwitchingDemo extends LinearOpMode
             RAW_IMAGE,
         }
 
-        private Stage stageToRenderToViewport = Stage.YCbCr_CHAN2;
+        private Stage stageToRenderToViewport = Stage.CONTOURS_OVERLAYED_ON_FRAME;
         private Stage[] stages = Stage.values();
 
-        @Override
+        //@Override
         public void onViewportTapped()
         {
             /*
@@ -164,7 +165,7 @@ public class PipelineStageSwitchingDemo extends LinearOpMode
              */
             Imgproc.cvtColor(input, yCbCrChan2Mat, Imgproc.COLOR_RGB2YCrCb);
             Core.extractChannel(yCbCrChan2Mat, yCbCrChan2Mat, 2);
-            Imgproc.threshold(yCbCrChan2Mat, thresholdMat, 102, 255, Imgproc.THRESH_BINARY_INV);
+                Imgproc.threshold(yCbCrChan2Mat, thresholdMat, 100, 150, Imgproc.THRESH_BINARY_INV);
             Imgproc.findContours(thresholdMat, contoursList, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
             numContoursFound = contoursList.size();
             input.copyTo(contoursOnFrameMat);
