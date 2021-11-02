@@ -7,6 +7,8 @@ import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
+import org.opencv.core.Point;
+import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
 import org.openftc.easyopencv.OpenCvCamera;
@@ -29,9 +31,21 @@ public class PipelineStageSwitchingDemo extends LinearOpMode
     OpenCvWebcam webcam;
     StageSwitchingPipeline stageSwitchingPipeline;
 
+    private static float offsetX = 0f/8f;//changing this moves the three rects and the three circles left or right, range : (-2, 2) not inclusive
+    private static float offsetY = 0f/8f;//changing this moves the three rects and circles up or down, range: (-4, 4) not inclusive
+
+    private static float[] midPos = {4f/8f+offsetX, 6.2f/8f+offsetY};//0 = col, 1 = row
+    private static float[] leftPos = {1.5f/8f+offsetX, 6.2f/8f+offsetY};
+    private static float[] rightPos = {6.5f/8f+offsetX, 6.2f/8f+offsetY};
+
+    public int valRight;
+    public int valMid;
+    public int valLeft;
+
     @Override
     public void runOpMode()
     {
+
         /**
          * NOTE: Many comments have been omitted from this sample for the
          * sake of conciseness. If you're just starting out with EasyOpenCv,
@@ -115,89 +129,60 @@ public class PipelineStageSwitchingDemo extends LinearOpMode
      * particularly useful during pipeline development. We also show how
      * to get data from the pipeline to your OpMode.
      */
-    static class StageSwitchingPipeline extends OpenCvPipeline
+    class StageSwitchingPipeline extends OpenCvPipeline
     {
         Mat yCbCrChan2Mat = new Mat();
         Mat thresholdMat = new Mat();
         Mat contoursOnFrameMat = new Mat();
         List<MatOfPoint> contoursList = new ArrayList<>();
         int numContoursFound;
-
-        enum Stage
-        {
-            YCbCr_CHAN2,
-            THRESHOLD,
-            CONTOURS_OVERLAYED_ON_FRAME,
-            RAW_IMAGE,
-        }
-
-        private Stage stageToRenderToViewport = Stage.CONTOURS_OVERLAYED_ON_FRAME;
-        private Stage[] stages = Stage.values();
-
-        //@Override
-        public void onViewportTapped()
-        {
-            /*
-             * Note that this method is invoked from the UI thread
-             * so whatever we do here, we must do quickly.
-             */
-
-            int currentStageNum = stageToRenderToViewport.ordinal();
-
-            int nextStageNum = currentStageNum + 1;
-
-            if(nextStageNum >= stages.length)
-            {
-                nextStageNum = 0;
-            }
-
-            stageToRenderToViewport = stages[nextStageNum];
-        }
+        Mat greyScale = new Mat();
 
         @Override
         public Mat processFrame(Mat input)
         {
             contoursList.clear();
 
+            //get values from frame
+            double[] pixMid = greyScale.get((int)(input.rows()* midPos[1]), (int)(input.cols()* midPos[0]));//gets value at circle
+            valMid = (int)pixMid[0];
+
+            double[] pixLeft = greyScale.get((int)(input.rows()* leftPos[1]), (int)(input.cols()* leftPos[0]));//gets value at circle
+            valLeft = (int)pixLeft[0];
+
+            double[] pixRight = greyScale.get((int)(input.rows()* rightPos[1]), (int)(input.cols()* rightPos[0]));//gets value at circle
+            valRight = (int)pixRight[0];
+
+            //create three points
+            Point pointMid = new Point((int)(input.cols()* midPos[0]), (int)(input.rows()* midPos[1]));
+            Point pointLeft = new Point((int)(input.cols()* leftPos[0]), (int)(input.rows()* leftPos[1]));
+            Point pointRight = new Point((int)(input.cols()* rightPos[0]), (int)(input.rows()* rightPos[1]));
+
+            //draw circles on those points
+            Imgproc.circle(greyScale, pointMid,5, new Scalar( 255, 0, 0 ),1 );//draws circle
+            Imgproc.circle(greyScale, pointLeft,5, new Scalar( 255, 0, 0 ),1 );//draws circle
+            Imgproc.circle(greyScale, pointRight,5, new Scalar( 255, 0, 0 ),1 );//draws circle
+
             /*
              * This pipeline finds the contours of yellow blobs such as the Gold Mineral
              * from the Rover Ruckus game.
              */
+
+            /*
             Imgproc.cvtColor(input, yCbCrChan2Mat, Imgproc.COLOR_RGB2YCrCb);
             Core.extractChannel(yCbCrChan2Mat, yCbCrChan2Mat, 2);
-                Imgproc.threshold(yCbCrChan2Mat, thresholdMat, 100, 150, Imgproc.THRESH_BINARY_INV);
+            Imgproc.threshold(yCbCrChan2Mat, thresholdMat, 100, 150, Imgproc.THRESH_BINARY_INV);
             Imgproc.findContours(thresholdMat, contoursList, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
             numContoursFound = contoursList.size();
             input.copyTo(contoursOnFrameMat);
             Imgproc.drawContours(contoursOnFrameMat, contoursList, -1, new Scalar(0, 0, 255), 3, 8);
 
-            switch (stageToRenderToViewport)
-            {
-                case YCbCr_CHAN2:
-                {
-                    return yCbCrChan2Mat;
-                }
+            return contoursOnFrameMat;
+             */
 
-                case THRESHOLD:
-                {
-                    return thresholdMat;
-                }
+            Imgproc.cvtColor(input, greyScale, Imgproc.COLOR_RGB2GRAY);
 
-                case CONTOURS_OVERLAYED_ON_FRAME:
-                {
-                    return contoursOnFrameMat;
-                }
-
-                case RAW_IMAGE:
-                {
-                    return input;
-                }
-
-                default:
-                {
-                    return input;
-                }
-            }
+            return greyScale;
         }
 
         public int getNumContoursFound()
