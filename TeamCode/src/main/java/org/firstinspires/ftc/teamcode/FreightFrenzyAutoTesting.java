@@ -48,7 +48,7 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
     Acceleration gravity;
 
     OpenCvWebcam webcam;
-    StageSwitchingPipeline stageSwitchingPipeline; //used to be lowercase s, idk why so i changed it
+    StageSwitchingPipeline stageSwitchingPipeline;
 
     FFHardwareMap robot = new FFHardwareMap();
 
@@ -68,8 +68,21 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
 
     double[] target = new double[3]; //x, y, a
 
+    private static float offsetX = 0f/8f;//changing this moves the three rects and the three circles left or right, range : (-2, 2) not inclusive
+    private static float offsetY = 0f/8f;//changing this moves the three rects and circles up or down, range: (-4, 4) not inclusive
+
+    private static float[] midPos = {4f/8f+offsetX, 6.2f/8f+offsetY};//0 = col, 1 = row
+    private static float[] leftPos = {1.5f/8f+offsetX, 6.2f/8f+offsetY};
+    private static float[] rightPos = {6.5f/8f+offsetX, 6.2f/8f+offsetY};
+
+    public int valRight;
+    public int valMid;
+    public int valLeft;
+
     @Override
     public void runOpMode() throws InterruptedException {
+
+        //EASY OPEN CV INITIALIZATION
         int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
         webcam = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "Webcam 1"), cameraMonitorViewId);
 
@@ -100,7 +113,7 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
         parameters2.loggingTag = "IMU";
         parameters2.accelerationIntegrationAlgorithm = new JustLoggingAccelerationIntegrator();
 
-        //robot.init(hardwareMap);
+        robot.init(hardwareMap);
 
         //Reset Encoders
         idle();
@@ -126,147 +139,76 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
             telemetry.addData("Status:", "Waiting for start command.");
             telemetry.update();
         };
+
         runtime.reset();
+
+        //AUTONOMOUS
         while (opModeIsActive()) {
-            telemetry.addData("Num contours found", stageSwitchingPipeline.getNumContoursFound()); //used to be lowercase s
+            if (valLeft > valMid && valLeft > valRight) {
+                telemetry.addData("valLeft:", valLeft);
+            } else if (valMid > valLeft && valMid > valRight) {
+                telemetry.addData("valMid:", valMid);
+            } else {
+                telemetry.addData("valRight:", valRight);
+            }
             telemetry.update();
             sleep(100);
             //localize();
         }
     }
-    /*
 
     //FUNCTIONS
-    public void localize() {
-        //variable updates
-        encoderVals[0] = robot.bl.getCurrentPosition();
-        encoderVals[1] = robot.br.getCurrentPosition();
-        angle = getAbsoluteHeading();
-        if (angle - lastAngle < -300) { revolutions++; }
-        else if (angle - lastAngle > 300) {revolutions--;}
-        accumulatedAngle = getAccumulatedHeading(angle);
 
-        //actual localization
-        encoderAndAngleDif[0] = encoderVals[0] - lastEncoderVals[0];
-        encoderAndAngleDif[1] = encoderVals[1] - lastEncoderVals[1];
-        encoderAndAngleDif[2] = accumulatedAngle - lastAccumulatedAngle;
-
-    }
-
-    public void setMotorPower(double l, double r) {
-        robot.fl.setPower(l);
-        robot.fr.setPower(r);
-        robot.bl.setPower(l);
-        robot.br.setPower(r);
-    }
-
-    //why does the hub normalize angles by default it is honestly a nightmare istg
-    public double getAccumulatedHeading(double angle) {
-        return (revolutions*360) + angle;
-    }
-
-     */
 
     //OPENCV SUFFERING
-    static class StageSwitchingPipeline extends OpenCvPipeline
+    class StageSwitchingPipeline extends OpenCvPipeline
     {
         Mat yCbCrChan2Mat = new Mat();
-        Mat thresholdMat50 = new Mat();
-        Mat thresholdMat100 = new Mat();
-        Mat thresholdMat150 = new Mat();
-        Mat thresholdMat200 = new Mat();
+        Mat thresholdMat = new Mat();
         Mat contoursOnFrameMat = new Mat();
         List<MatOfPoint> contoursList = new ArrayList<>();
         int numContoursFound;
-
-        enum Stage
-        {
-            YCbCr_CHAN2,
-            THRESHOLD50,
-            THRESHOLD100,
-            THRESHOLD150,
-            THRESHOLD200,
-            CONTOURS_OVERLAYED_ON_FRAME,
-            RAW_IMAGE,
-        }
-
-        private Stage stageToRenderToViewport = Stage.YCbCr_CHAN2;
-        private Stage[] stages = Stage.values();
-
-        @Override
-        public void onViewportTapped()
-        {
-
-            int currentStageNum = stageToRenderToViewport.ordinal();
-
-            int nextStageNum = currentStageNum + 1;
-
-            if(nextStageNum >= stages.length)
-            {
-                nextStageNum = 0;
-            }
-
-            stageToRenderToViewport = stages[nextStageNum];
-        }
+        Mat greyScale = new Mat();
 
         @Override
         public Mat processFrame(Mat input)
         {
             contoursList.clear();
+            Imgproc.cvtColor(input, greyScale, Imgproc.COLOR_RGB2GRAY);
 
+            //get values from frame
+            double[] pixMid = greyScale.get((int)(input.rows()* midPos[1]), (int)(input.cols()* midPos[0]));//gets value at circle
+            valMid = (int)pixMid[0];
+
+            double[] pixLeft = greyScale.get((int)(input.rows()* leftPos[1]), (int)(input.cols()* leftPos[0]));//gets value at circle
+            valLeft = (int)pixLeft[0];
+
+            double[] pixRight = greyScale.get((int)(input.rows()* rightPos[1]), (int)(input.cols()* rightPos[0]));//gets value at circle
+            valRight = (int)pixRight[0];
+
+            //create three points
+            Point pointMid = new Point((int)(input.cols()* midPos[0]), (int)(input.rows()* midPos[1]));
+            Point pointLeft = new Point((int)(input.cols()* leftPos[0]), (int)(input.rows()* leftPos[1]));
+            Point pointRight = new Point((int)(input.cols()* rightPos[0]), (int)(input.rows()* rightPos[1]));
+
+            //draw circles on those points
+            Imgproc.circle(greyScale, pointMid,5, new Scalar( 255, 0, 0 ),1 );//draws circle
+            Imgproc.circle(greyScale, pointLeft,5, new Scalar( 255, 0, 0 ),1 );//draws circle
+            Imgproc.circle(greyScale, pointRight,5, new Scalar( 255, 0, 0 ),1 );//draws circle
+
+            /*
             Imgproc.cvtColor(input, yCbCrChan2Mat, Imgproc.COLOR_RGB2YCrCb);
             Core.extractChannel(yCbCrChan2Mat, yCbCrChan2Mat, 2);
-            Imgproc.threshold(yCbCrChan2Mat, thresholdMat50, 50, 255, Imgproc.THRESH_BINARY_INV);
-            Imgproc.threshold(yCbCrChan2Mat, thresholdMat100, 100, 255, Imgproc.THRESH_BINARY_INV);
-            Imgproc.threshold(yCbCrChan2Mat, thresholdMat150, 150, 255, Imgproc.THRESH_BINARY_INV);
-            Imgproc.threshold(yCbCrChan2Mat, thresholdMat200, 200, 255, Imgproc.THRESH_BINARY_INV);
-            Imgproc.findContours(thresholdMat100, contoursList, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
+            Imgproc.threshold(yCbCrChan2Mat, thresholdMat, 100, 150, Imgproc.THRESH_BINARY_INV);
+            Imgproc.findContours(thresholdMat, contoursList, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
             numContoursFound = contoursList.size();
             input.copyTo(contoursOnFrameMat);
             Imgproc.drawContours(contoursOnFrameMat, contoursList, -1, new Scalar(0, 0, 255), 3, 8);
 
-            switch (stageToRenderToViewport)
-            {
-                case YCbCr_CHAN2:
-                {
-                    return yCbCrChan2Mat;
-                }
+            return contoursOnFrameMat;
+             */
 
-                case THRESHOLD50:
-                {
-                    return thresholdMat50;
-                }
-
-                case THRESHOLD100:
-                {
-                    return thresholdMat100;
-                }
-
-                case THRESHOLD150:
-                {
-                    return thresholdMat150;
-                }
-
-                case THRESHOLD200:
-                {
-                    return thresholdMat200;
-                }
-
-                case CONTOURS_OVERLAYED_ON_FRAME:
-                {
-                    return contoursOnFrameMat;
-                }
-
-                case RAW_IMAGE:
-                {
-                    return input;
-                }
-
-                default:
-                {
-                    return input;
-                }
-            }
+            return greyScale;
         }
 
         public int getNumContoursFound()
