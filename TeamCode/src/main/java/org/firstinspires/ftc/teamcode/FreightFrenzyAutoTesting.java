@@ -23,6 +23,7 @@ import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
+import org.opencv.core.Point;
 import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
 import org.openftc.easyopencv.OpenCvCamera;
@@ -50,7 +51,7 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
     OpenCvWebcam webcam;
     StageSwitchingPipeline stageSwitchingPipeline;
 
-    FFHardwareMap robot = new FFHardwareMap();
+    //FFHardwareMap robot = new FFHardwareMap();
 
     //USER GENERATED VALUES//
     double headingResetValue;
@@ -71,9 +72,9 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
     private static float offsetX = 0f/8f;//changing this moves the three rects and the three circles left or right, range : (-2, 2) not inclusive
     private static float offsetY = 0f/8f;//changing this moves the three rects and circles up or down, range: (-4, 4) not inclusive
 
-    private static float[] midPos = {4f/8f+offsetX, 6.2f/8f+offsetY};//0 = col, 1 = row
-    private static float[] leftPos = {1.5f/8f+offsetX, 6.2f/8f+offsetY};
-    private static float[] rightPos = {6.5f/8f+offsetX, 6.2f/8f+offsetY};
+    private static float[] midPos = {4f/8f+offsetX, 4f/8f+offsetY};//0 = col, 1 = row
+    private static float[] leftPos = {2f/8f+offsetX, 4f/8f+offsetY};
+    private static float[] rightPos = {6f/8f+offsetX, 4f/8f+offsetY};
 
     public int valRight;
     public int valMid;
@@ -113,7 +114,7 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
         parameters2.loggingTag = "IMU";
         parameters2.accelerationIntegrationAlgorithm = new JustLoggingAccelerationIntegrator();
 
-        robot.init(hardwareMap);
+        //robot.init(hardwareMap);
 
         //Reset Encoders
         idle();
@@ -144,13 +145,17 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
 
         //AUTONOMOUS
         while (opModeIsActive()) {
-            if (valLeft > valMid && valLeft > valRight) {
-                telemetry.addData("valLeft:", valLeft);
-            } else if (valMid > valLeft && valMid > valRight) {
-                telemetry.addData("valMid:", valMid);
+            if (valLeft < valMid && valLeft < valRight) {
+                telemetry.addData("valLeft:",  "Lowest");
+            } else if (valMid < valLeft && valMid < valRight) {
+                telemetry.addData("valMid:", "Lowest");
             } else {
-                telemetry.addData("valRight:", valRight);
+                telemetry.addData("valRight:", "Lowest");
             }
+
+            telemetry.addData("valLeft: ", valLeft);
+            telemetry.addData("valMid: ", valMid);
+            telemetry.addData("valRight: ", valRight);
             telemetry.update();
             sleep(100);
             //localize();
@@ -163,6 +168,7 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
     //OPENCV SUFFERING
     class StageSwitchingPipeline extends OpenCvPipeline
     {
+        Mat yCbCr = new Mat();
         Mat yCbCrChan2Mat = new Mat();
         Mat thresholdMat = new Mat();
         Mat contoursOnFrameMat = new Mat();
@@ -174,16 +180,18 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
         public Mat processFrame(Mat input)
         {
             contoursList.clear();
-            Imgproc.cvtColor(input, greyScale, Imgproc.COLOR_RGB2GRAY);
+            //Imgproc.cvtColor(input, greyScale, Imgproc.COLOR_RGB2GRAY);
+            Imgproc.cvtColor(input, yCbCr, Imgproc.COLOR_RGB2YCrCb);
+            Core.extractChannel(yCbCr, yCbCrChan2Mat, 2);
 
             //get values from frame
-            double[] pixMid = greyScale.get((int)(input.rows()* midPos[1]), (int)(input.cols()* midPos[0]));//gets value at circle
+            double[] pixMid = yCbCrChan2Mat.get((int)(input.rows()* midPos[1]), (int)(input.cols()* midPos[0]));//gets value at circle
             valMid = (int)pixMid[0];
 
-            double[] pixLeft = greyScale.get((int)(input.rows()* leftPos[1]), (int)(input.cols()* leftPos[0]));//gets value at circle
+            double[] pixLeft = yCbCrChan2Mat.get((int)(input.rows()* leftPos[1]), (int)(input.cols()* leftPos[0]));//gets value at circle
             valLeft = (int)pixLeft[0];
 
-            double[] pixRight = greyScale.get((int)(input.rows()* rightPos[1]), (int)(input.cols()* rightPos[0]));//gets value at circle
+            double[] pixRight = yCbCrChan2Mat.get((int)(input.rows()* rightPos[1]), (int)(input.cols()* rightPos[0]));//gets value at circle
             valRight = (int)pixRight[0];
 
             //create three points
@@ -192,9 +200,9 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
             Point pointRight = new Point((int)(input.cols()* rightPos[0]), (int)(input.rows()* rightPos[1]));
 
             //draw circles on those points
-            Imgproc.circle(greyScale, pointMid,5, new Scalar( 255, 0, 0 ),1 );//draws circle
-            Imgproc.circle(greyScale, pointLeft,5, new Scalar( 255, 0, 0 ),1 );//draws circle
-            Imgproc.circle(greyScale, pointRight,5, new Scalar( 255, 0, 0 ),1 );//draws circle
+            Imgproc.circle(yCbCrChan2Mat, pointMid,5, new Scalar( 255, 0, 0 ),1 );//draws circle
+            Imgproc.circle(yCbCrChan2Mat, pointLeft,5, new Scalar( 255, 0, 0 ),1 );//draws circle
+            Imgproc.circle(yCbCrChan2Mat, pointRight,5, new Scalar( 255, 0, 0 ),1 );//draws circle
 
             /*
             Imgproc.cvtColor(input, yCbCrChan2Mat, Imgproc.COLOR_RGB2YCrCb);
@@ -208,7 +216,7 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
             return contoursOnFrameMat;
              */
 
-            return greyScale;
+            return yCbCrChan2Mat;
         }
 
         public int getNumContoursFound()
