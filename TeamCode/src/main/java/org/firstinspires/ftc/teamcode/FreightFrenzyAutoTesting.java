@@ -48,10 +48,9 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
     Orientation angles;
     Acceleration gravity;
 
-    OpenCvWebcam webcam;
-    StageSwitchingPipeline stageSwitchingPipeline;
+    OpenCvWebcam depositcam;
 
-    //FFHardwareMap robot = new FFHardwareMap();
+    FFHardwareMap robot = new FFHardwareMap();
 
     //USER GENERATED VALUES//
     double headingResetValue;
@@ -85,17 +84,17 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
 
         //EASY OPEN CV INITIALIZATION
         int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
-        webcam = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "Webcam 1"), cameraMonitorViewId);
+        depositcam = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "depositCam"), cameraMonitorViewId);
 
-        webcam.setPipeline(new StageSwitchingPipeline());
+        depositcam.setPipeline(new shippingElementDetection());
 
-        webcam.setMillisecondsPermissionTimeout(2500); // Timeout for obtaining permission is configurable. Set before opening.
-        webcam.openCameraDeviceAsync(new OpenCvCamera.AsyncCameraOpenListener()
+        depositcam.setMillisecondsPermissionTimeout(2500); // Timeout for obtaining permission is configurable. Set before opening.
+        depositcam.openCameraDeviceAsync(new OpenCvCamera.AsyncCameraOpenListener()
         {
             @Override
             public void onOpened()
             {
-                webcam.startStreaming(640, 480, OpenCvCameraRotation.UPRIGHT);
+                depositcam.startStreaming(640, 480, OpenCvCameraRotation.UPRIGHT);
             }
 
             @Override
@@ -114,7 +113,7 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
         parameters2.loggingTag = "IMU";
         parameters2.accelerationIntegrationAlgorithm = new JustLoggingAccelerationIntegrator();
 
-        //robot.init(hardwareMap);
+        robot.init(hardwareMap);
 
         //Reset Encoders
         idle();
@@ -166,7 +165,7 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
 
 
     //OPENCV SUFFERING
-    class StageSwitchingPipeline extends OpenCvPipeline
+    class shippingElementDetection extends OpenCvPipeline
     {
         Mat yCbCr = new Mat();
         Mat yCbCrChan2Mat = new Mat();
