@@ -68,20 +68,43 @@ public class Freight_Frenzy_Testing extends LinearOpMode {
 
         double forward = 0;
         double turning = 0;
+        double lSpeed = 0;
+        double rSpeed = 0;
 
         // Wait for the game to start (driver presses PLAY)
         waitForStart();
         runtime.reset();
 
+
         // run until the end of the match (driver presses STOP)
         while (opModeIsActive()) {
 
+            if (gamepad1.left_stick_y > 0.05 && gamepad1.right_trigger > 0.1) {
+                forward = 0.2*gamepad1.left_stick_y*gamepad1.left_stick_y;
+            } else {
+                forward = 0.9*gamepad1.left_stick_y*gamepad1.left_stick_y;
+            }
 
+            if (gamepad1.right_stick_x > 0.05) {
+                turning = 0.1 * gamepad1.right_stick_x;
+            }
+
+            lSpeed = Range.clip(forward + turning, -1, 1);
+            rSpeed = Range.clip(forward - turning, -1, 1);
+
+            setMotorSpeed(lSpeed, rSpeed);
 
             // Show the elapsed game time and wheel power.
             telemetry.addData("Status", "Run Time: " + runtime.toString());
             telemetry.addData("Motors", 0);
             telemetry.update();
         }
+    }
+
+    public void setMotorSpeed(double l, double r) {
+        robot.bl.setPower(l);
+        robot.br.setPower(r);
+        robot.fl.setPower(l);
+        robot.fr.setPower(r);
     }
 }
