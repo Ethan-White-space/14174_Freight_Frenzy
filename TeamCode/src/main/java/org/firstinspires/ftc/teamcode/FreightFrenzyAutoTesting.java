@@ -108,13 +108,13 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
 
         //EASY OPEN CV INITIALIZATION
         int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
-        //depositcam = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "depositCam"), cameraMonitorViewId);
+        depositcam = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "depositCam"), cameraMonitorViewId);
         collectCam = hardwareMap.get(WebcamName.class, "collectCam");
 
-        //depositcam.setPipeline(new shippingElementDetection());
+        depositcam.setPipeline(new shippingElementDetection());
 
-        //depositcam.setMillisecondsPermissionTimeout(2500); // Timeout for obtaining permission is configurable. Set before opening.
-        /*depositcam.openCameraDeviceAsync(new OpenCvCamera.AsyncCameraOpenListener()
+        depositcam.setMillisecondsPermissionTimeout(2500); // Timeout for obtaining permission is configurable. Set before opening.
+        depositcam.openCameraDeviceAsync(new OpenCvCamera.AsyncCameraOpenListener()
         {
             @Override
             public void onOpened()
@@ -128,7 +128,6 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
 
             }
         });
-         */
 
         //ADDITIONAL VUFORIA INITIALIZATION
         VuforiaLocalizer.Parameters parameters = new VuforiaLocalizer.Parameters(cameraMonitorViewId);
@@ -312,6 +311,43 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
         {
             return numContoursFound;
         }
+    }
+
+    //Vuforia Functions
+    OpenGLMatrix readVuforiaPosition(List<VuforiaTrackable> allTrackables) {
+        targetVisible = false;
+        for (VuforiaTrackable trackable : allTrackables) {
+            if (((VuforiaTrackableDefaultListener)trackable.getListener()).isVisible()) {
+                telemetry.addData("Visible Target", trackable.getName());
+                targetVisible = true;
+
+                // getUpdatedRobotLocation() will return null if no new information is available since
+                // the last time that call was made, or if the trackable is not currently visible.
+                OpenGLMatrix robotLocationTransform = ((VuforiaTrackableDefaultListener)trackable.getListener()).getUpdatedRobotLocation();
+                if (robotLocationTransform != null) {
+                    lastLocation = robotLocationTransform;
+                }
+                break;
+            }
+        }
+
+        // Provide feedback as to where the robot is located (if we know).
+        if (targetVisible) {
+            // express position (translation) of robot in inches.
+            VectorF translation = lastLocation.getTranslation();
+            telemetry.addData("Pos (inches)", "{X, Y, Z} = %.1f, %.1f, %.1f",
+                    translation.get(0) / mmPerInch, translation.get(1) / mmPerInch, translation.get(2) / mmPerInch);
+
+            // express the rotation of the robot in degrees.
+            Orientation rotation = Orientation.getOrientation(lastLocation, EXTRINSIC, XYZ, DEGREES);
+            telemetry.addData("Rot (deg)", "{Roll, Pitch, Heading} = %.0f, %.0f, %.0f", rotation.firstAngle, rotation.secondAngle, rotation.thirdAngle);
+        }
+        else {
+            telemetry.addData("Visible Target", "none");
+        }
+        telemetry.update();
+
+        return lastLocation;
     }
 
     void identifyTarget(int targetIndex, String targetName, float dx, float dy, float dz, float rx, float ry, float rz) {
