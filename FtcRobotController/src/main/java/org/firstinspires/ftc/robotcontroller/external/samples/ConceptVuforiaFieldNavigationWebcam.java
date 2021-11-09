@@ -76,7 +76,7 @@ import static org.firstinspires.ftc.robotcore.external.navigation.AxesReference.
  */
 
 @TeleOp(name="Vuforia Field Nav Webcam", group ="Concept")
-@Disabled
+//@Disabled
 public class ConceptVuforiaFieldNavigationWebcam extends LinearOpMode {
 
     /*
@@ -91,8 +91,7 @@ public class ConceptVuforiaFieldNavigationWebcam extends LinearOpMode {
      * Once you've obtained a license key, copy the string from the Vuforia web site
      * and paste it in to your code on the next line, between the double quotes.
      */
-    private static final String VUFORIA_KEY =
-            " --- YOUR NEW VUFORIA KEY GOES HERE  --- ";
+    private static final String VUFORIA_KEY = "AQdreXP/////AAABmZt6Oecz+kEzpK0JGPmBsiNN7l/NAvoL0zpZPFQAslTHUcNYg++t82d9o6emZcSfRJM36o491JUmYS/5qdxxP235BssGslVIMSJCT7vNZ2iQW2pwj6Lxtw/oqvCLtgGRPxUyVSC1u5QHi+Siktg3e4g9rYzoQ2+kzv2chS8TnNooSoF6YgQh4FXqCYRizfbYkjVWtx/DtIigXy+TrXNn84yXbl66CnjNy2LFaOdBFrl315+A79dEYJ+Pl0b75dzncQcrt/aulSBllkA4f03FxeN3Ck1cx9twVFatjOCFxPok0OApMyo1kcARcPpemk1mqF2yf2zJORZxF0H+PcRkS2Sv92UpSEq/9v+dYpruj/Vr";
 
     // Since ImageTarget trackables use mm to specifiy their dimensions, we must use mm for all the physical dimension.
     // We will define some constants and conversions here
@@ -112,7 +111,7 @@ public class ConceptVuforiaFieldNavigationWebcam extends LinearOpMode {
 
     @Override public void runOpMode() {
         // Connect to the camera we are to use.  This name must match what is set up in Robot Configuration
-        webcamName = hardwareMap.get(WebcamName.class, "Webcam 1");
+        webcamName = hardwareMap.get(WebcamName.class, "collectCam");
 
         /*
          * Configure Vuforia by creating a Parameter object, and passing it to the Vuforia engine.
