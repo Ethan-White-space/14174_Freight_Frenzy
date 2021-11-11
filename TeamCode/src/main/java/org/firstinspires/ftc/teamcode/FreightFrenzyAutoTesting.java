@@ -78,19 +78,12 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
 
     //USER GENERATED VALUES//
     double headingResetValue;
-    double revolutions;
 
     //localization
     double[] position = {0, 0}; //x, y
-    double[] encoderVals = {0, 0}; //l, r
     double[] lastEncoderVals = {0, 0}; //l, r
-    double[] encoderAndAngleDif = {0, 0, 0}; //delta l, delta r, delta a
-    double lastAngle = 0;
-    double angle = 0;
-    double lastAccumulatedAngle = 0;
-    double accumulatedAngle = 0;
 
-    double[] target = new double[3]; //x, y, a
+    double[] target = new double[3]; //x, y, v
 
     private static float offsetX = 0f/8f;//changing this moves the three rects and the three circles left or right, range : (-2, 2) not inclusive
     private static float offsetY = 0f/8f;//changing this moves the three rects and circles up or down, range: (-4, 4) not inclusive
@@ -166,12 +159,7 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
         parameters2.loggingTag = "IMU";
         parameters2.accelerationIntegrationAlgorithm = new JustLoggingAccelerationIntegrator();
 
-        //robot.init(hardwareMap);
-
-        //Reset Encoders
-        idle();
-
-        //Set the Run Mode For The Motors
+        robot.init(hardwareMap);
 
         //DEFINE SENSORS
         imu = hardwareMap.get(BNO055IMU.class, "imu");
@@ -199,8 +187,6 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
         //AUTONOMOUS
         while (opModeIsActive()) {
 
-
-            /*
             if (valLeft < valMid && valLeft < valRight) {
                 telemetry.addData("valLeft:",  "Lowest");
             } else if (valMid < valLeft && valMid < valRight) {
@@ -213,45 +199,34 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
             telemetry.addData("valMid: ", valMid);
             telemetry.addData("valRight: ", valRight);
             telemetry.update();
-             */
-            targetVisible = false;
-            for (VuforiaTrackable trackable : allTrackables) {
-                if (((VuforiaTrackableDefaultListener)trackable.getListener()).isVisible()) {
-                    telemetry.addData("Visible Target", trackable.getName());
-                    targetVisible = true;
 
-                    // getUpdatedRobotLocation() will return null if no new information is available since
-                    // the last time that call was made, or if the trackable is not currently visible.
-                    OpenGLMatrix robotLocationTransform = ((VuforiaTrackableDefaultListener)trackable.getListener()).getUpdatedRobotLocation();
-                    if (robotLocationTransform != null) {
-                        lastLocation = robotLocationTransform;
-                    }
-                    break;
-                }
-            }
-
-            // Provide feedback as to where the robot is located (if we know).
-            if (targetVisible) {
-                // express position (translation) of robot in inches.
-                VectorF translation = lastLocation.getTranslation();
-                telemetry.addData("Pos (inches)", "{X, Y, Z} = %.1f, %.1f, %.1f",
-                        translation.get(0) / mmPerInch, translation.get(1) / mmPerInch, translation.get(2) / mmPerInch);
-
-                // express the rotation of the robot in degrees.
-                Orientation rotation = Orientation.getOrientation(lastLocation, EXTRINSIC, XYZ, DEGREES);
-                telemetry.addData("Rot (deg)", "{Roll, Pitch, Heading} = %.0f, %.0f, %.0f", rotation.firstAngle, rotation.secondAngle, rotation.thirdAngle);
-            }
-            else {
-                telemetry.addData("Visible Target", "none");
-            }
-            telemetry.update();
+            OpenGLMatrix vuLocation = readVuforiaPosition(allTrackables);
 
             sleep(100);
         }
     }
 
     //FUNCTIONS
+    public void navigateForward(double[][] targets, double speedMax, double speedMin, double accuracyMultiplier, double timeOut) {
+        double distance = 0;
+        double speed = Math.cbrt(0.01*distance);
 
+        double[] robotOriginXY = {targets[0][0] - position[0], targets[0][1] - position[1]};
+        double[] pointVector = {(robotOriginXY[0]*robotOriginXY[0]) + (robotOriginXY[1]*robotOriginXY[1]), Math.atan2(robotOriginXY[0], robotOriginXY[1])}; //mag, angle
+        double[] localTargetXY = {};
+    }
+
+    public void localize() {
+        double[] encoderVals = {robot.bl.getCurrentPosition(), robot.br.getCurrentPosition()}; //l, r
+        double[] encoderDif = {encoderVals[0] - lastEncoderVals[0],encoderVals[1] - lastEncoderVals[1]}; //delta l, delta r, delta a
+        double averageDif = (encoderDif[0] + encoderDif[1])/2;
+
+        position[0] = position[0] + (averageDif * -Math.sin(getAbsoluteHeading()));
+        position[1] = position[1] + (averageDif * Math.cos(getAbsoluteHeading()));
+
+        lastEncoderVals[0] = encoderVals[0];
+        lastEncoderVals[1] = encoderVals[1];
+    }
 
     //OPENCV SUFFERING
     class shippingElementDetection extends OpenCvPipeline
@@ -268,7 +243,6 @@ public class FreightFrenzyAutoTesting extends LinearOpMode {
         public Mat processFrame(Mat input)
         {
             contoursList.clear();
-            //Imgproc.cvtColor(input, greyScale, Imgproc.COLOR_RGB2GRAY);
             Imgproc.cvtColor(input, yCbCr, Imgproc.COLOR_RGB2YCrCb);
             Core.extractChannel(yCbCr, yCbCrChan2Mat, 2);
 
