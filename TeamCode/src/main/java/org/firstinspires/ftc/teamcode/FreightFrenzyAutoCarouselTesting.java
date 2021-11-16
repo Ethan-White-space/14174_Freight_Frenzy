@@ -58,10 +58,8 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
     OpenCvWebcam depositcam; //EOCV Depo Cam
     WebcamName collectCam;   //Vuforia Collect Cam
 
-    private static final String TFOD_MODEL_ASSET = "FreightFrenzy_BCDM.tflite";
+    private static final String TFOD_MODEL_ASSET = "FreightFrenzy_DM.tflite";
     private static final String[] LABELS = {
-            "Ball",
-            "Cube",
             "Duck",
             "Marker"
     };
@@ -140,7 +138,7 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
             // to artificially zoom in to the center of image.  For best results, the "aspectRatio" argument
             // should be set to the value of the images used to create the TensorFlow Object Detection model
             // (typically 16/9).
-            tfod.setZoom(2.5, 16.0/9.0);
+            tfod.setZoom(1, 16.0/9.0);
         }
 
         //CODE FOR SETTING UP AND INITIALIZING IMU
@@ -179,6 +177,7 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
         //AUTONOMOUS
         while (opModeIsActive()) {
 
+            /*
             if (valLeft < valMid && valLeft < valRight) {
                 telemetry.addData("valLeft:",  "Lowest");
             } else if (valMid < valLeft && valMid < valRight) {
@@ -193,11 +192,10 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
             telemetry.update();
 
             if (tfod != null) {
-                // getUpdatedRecognitions() will return null if no new information is available since
-                // the last time that call was made.
                 List<Recognition> updatedRecognitions = tfod.getUpdatedRecognitions();
                 if (updatedRecognitions != null) {
                     telemetry.addData("# Object Detected", updatedRecognitions.size());
+
                     // step through the list of recognitions and display boundary info.
                     int i = 0;
                     for (Recognition recognition : updatedRecognitions) {
@@ -212,73 +210,105 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
                 }
             }
 
+             */
+            sleep(2000);
+            goToTFODTarget();
+            sleep(1000);
+            stop();
+
             sleep(100);
         }
     }
 
-    //Navigation Functions
-    public void navigateForward(double[][] targets, double speedMax, double speedMin, double accuracyMultiplier, double timeOut) {
-        double distance = 0;
-        double speed = Math.cbrt(0.01*distance);
+    public void goToTFODTarget() {
+        if (tfod != null) {
+            List<Recognition> updatedRecognitions = tfod.getUpdatedRecognitions();
+            if (updatedRecognitions == null) {
+                return;
+            }
+            telemetry.addData("# Object Detected", updatedRecognitions.size());
+
+            double pos = (updatedRecognitions.get(0)).getRight();
+            double posError = pos - 640;
+
+            while (Math.abs(posError) > 30 && whileChecks() && updatedRecognitions != null) {
+                if (posError > 0) {
+                    setMotorSpeed(0.2, -0.2);
+                } else {
+                    setMotorSpeed(-0.2, 0.2);
+                }
+                localize();
+            }
+            setMotorSpeed(0, 0);
+            sleep(1000);
+            while (updatedRecognitions != null && whileChecks()) {
+                setMotorSpeed(0.2, 0.2);
+                localize();
+            }
+            setMotorSpeed(0, 0);
+            driveStraight(200, 0.3, 20, 3000);
+        }
+    }
+
+    public void localizedDrive(double xTarget, double yTarget, double speedPercent, double error, double time) {
+        double desiredHeading = Math.atan2(yTarget-position[1], xTarget-position[0]);
+        turnTest(desiredHeading, speedPercent);
+        sleep(100);
+        driveStraight(Math.sqrt(((xTarget-position[0])*(xTarget-position[0]))+((yTarget-position[1])*(yTarget-position[1]))), speedPercent, error, time);
+    }
+
+    public void driveStraight (double duration, double speedPercent, double error, double time) {
+        double position = robot.br.getCurrentPosition();
+        double target = position + duration;
         double heading = getAbsoluteHeading();
+        double distanceToTargetStart = Math.abs(target - position);
+        double distanceToTarget = target - position;
+        double percentToTarget = distanceToTarget/distanceToTargetStart;
+        double speed = 0;
+        double[] wheelSpeed = new double[2]; //l, r
+        double turnSpeed = ((heading - getAbsoluteHeading())/20);
+        double startTime = getRuntime();
 
-        double[] robotOriginXY = {targets[0][0] - position[0], targets[0][1] - position[1]};
-        double[] pointVector = {Math.sqrt((robotOriginXY[0]*robotOriginXY[0]) + (robotOriginXY[1]*robotOriginXY[1])), -Math.atan2(robotOriginXY[0], robotOriginXY[1])}; //mag, angle
-        double[] localTargetXY = {pointVector[0]*Math.sin(pointVector[1]-heading), pointVector[0]*Math.cos(pointVector[1]-heading)}; //x, y
-        double headingError = angleWrap(pointVector[1] - heading);
-
-        double minSpeed = targets[0][2];
-        double maxSpeed = targets[0][3];
-
-        double tPower = 0;
-        double rPower = 0;
-
-        for (int i = 0; i < targets.length; i++) {
-            robotOriginXY[0] = targets[i][0] - position[0];
-            robotOriginXY[1] = targets[i][1] - position[1];
-            pointVector[0] = Math.sqrt((robotOriginXY[0]*robotOriginXY[0]) + (robotOriginXY[1]*robotOriginXY[1]));
-            pointVector[1] = -Math.atan2(robotOriginXY[0], robotOriginXY[1]);
-            localTargetXY[0] = pointVector[0]*Math.sin(pointVector[1]-heading);
-            localTargetXY[1] = pointVector[0]*Math.cos(pointVector[1]-heading);
-            distance = pointVector[0];
-            headingError = angleWrap(pointVector[1] - heading);
-            minSpeed = targets[i][2];
-            maxSpeed = targets[i][3];
-            tPower = (maxSpeed-minSpeed)*(Math.pow(0.01*distance, 1/3))+minSpeed;
-
-            while (distance > 30) {
-                robotOriginXY[0] = targets[i][0] - position[0];
-                robotOriginXY[1] = targets[i][1] - position[1];
-                pointVector[0] = Math.sqrt((robotOriginXY[0]*robotOriginXY[0]) + (robotOriginXY[1]*robotOriginXY[1]));
-                pointVector[1] = -Math.atan2(robotOriginXY[0], robotOriginXY[1]);
-                localTargetXY[0] = pointVector[0]*Math.sin(pointVector[1]-heading);
-                localTargetXY[1] = pointVector[0]*Math.cos(pointVector[1]-heading);
-                distance = pointVector[0];
-                minSpeed = targets[i][2];
-                maxSpeed = targets[i][3];
-                tPower = Range.clip((maxSpeed-minSpeed)*(Math.pow(0.01*distance, 1/3))+minSpeed, minSpeed, maxSpeed);
-
-                headingError = angleWrap(pointVector[1] - heading);
-                rPower = (1-tPower)*Range.clip(Math.pow(0.1*headingError, 1/1.8) ,1,1);
-
-                setMotorSpeed(tPower-rPower, tPower+rPower);
+        while (Math.abs(distanceToTarget) > error && !isStopRequested() && getRuntime() < startTime + time) {
+            position = robot.br.getCurrentPosition();
+            distanceToTarget = target - position;
+            percentToTarget = distanceToTarget/distanceToTargetStart;
+            if (percentToTarget >= 0) {
+                speed = ((-((percentToTarget-1)*(percentToTarget-1)*(percentToTarget-1)*(percentToTarget-1))+1)*speedPercent)*0.9;
+                if (Math.abs(speed) < 0.05) {speed = 0.05;}
+            }else if (percentToTarget < 0) {
+                speed = -((-((percentToTarget+1)*(percentToTarget+1)*(percentToTarget+1)*(percentToTarget+1))+1)*speedPercent)*0.9;
+                if (Math.abs(speed) < 0.05) {speed = -0.05;}
             }
 
-            i++;
-        }
+            turnSpeed = -((heading - getAbsoluteHeading())/40);
+
+            telemetry.addData("DaS:", distanceToTargetStart);
+            telemetry.addData("Target:", target);
+            telemetry.addData("Position:", position);
+            telemetry.addData("Distance:", distanceToTarget);
+            telemetry.addData("Percent:", percentToTarget);
+            telemetry.addData("Speed:", speed);
+            telemetry.addData("Turn Speed:", turnSpeed);
+            telemetry.update();
+
+            wheelSpeed[0] = Range.clip(speed, -0.9, 0.9) + Range.clip(turnSpeed, -0.1, 0.1);
+            wheelSpeed[1] = Range.clip(speed, -0.9, 0.9) - Range.clip(turnSpeed, -0.1, 0.1);
+
+            setMotorSpeed(wheelSpeed[0], wheelSpeed[1]);
+            localize();
+        };
+
         setMotorSpeed(0, 0);
-    }
-
-    public void forward(double distance, double speedMod, double error, double timeout) {
-
-    }
+    };
 
     public void turnTest(double target, double speedPercent) {
         double error = Math.toDegrees(angleWrap(Math.toRadians(target - getAbsoluteHeading())));
         final double startError = Math.abs(error);
-        while (Math.abs(error) > 4) {
+        while (Math.abs(error) > 4 && whileChecks()) {
             error = Math.toDegrees(angleWrap(Math.toRadians(target - getAbsoluteHeading())));
             setMotorSpeed((error/startError)*speedPercent, -(error/startError)*speedPercent);
+            localize();
         }
     }
 
@@ -397,6 +427,10 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
             radians += 2*Math.PI;
         }
         return radians;
+    }
+
+    boolean whileChecks() {
+        return !isStopRequested() && opModeIsActive();
     }
 
     public void composeTelemetry() {
