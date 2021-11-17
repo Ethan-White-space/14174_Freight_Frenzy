@@ -100,7 +100,7 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
 
         //EASY OPEN CV INITIALIZATION
         int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
-        depositcam = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "depositCam"), cameraMonitorViewId);
+        depositcam = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "depositCam"));
         collectCam = hardwareMap.get(WebcamName.class, "collectCam");
 
         depositcam.setPipeline(new shippingElementDetection());
@@ -131,7 +131,7 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
 
         if (tfod != null) {
             tfod.activate();
-
+            telemetry.addData("Tfod: ", "Activated");
             // The TensorFlow software will scale the input images from the camera to a lower resolution.
             // This can result in lower detection accuracy at longer distances (> 55cm or 22").
             // If your target is at distance greater than 50 cm (20") you can adjust the magnification value
@@ -177,7 +177,7 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
         //AUTONOMOUS
         while (opModeIsActive()) {
 
-            /*
+
             if (valLeft < valMid && valLeft < valRight) {
                 telemetry.addData("valLeft:",  "Lowest");
             } else if (valMid < valLeft && valMid < valRight) {
@@ -189,7 +189,7 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
             telemetry.addData("valLeft: ", valLeft);
             telemetry.addData("valMid: ", valMid);
             telemetry.addData("valRight: ", valRight);
-            telemetry.update();
+
 
             if (tfod != null) {
                 List<Recognition> updatedRecognitions = tfod.getUpdatedRecognitions();
@@ -210,13 +210,7 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
                 }
             }
 
-             */
-            sleep(2000);
-            goToTFODTarget();
-            sleep(1000);
-            stop();
 
-            sleep(100);
         }
     }
 

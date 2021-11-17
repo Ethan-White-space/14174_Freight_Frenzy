@@ -42,12 +42,12 @@ public class FFHardwareMap
         hwMap = ahwMap;
 
         // Define and Initialize Motors
-        /*
+
         fr = hwMap.get(DcMotor.class, "fr");
         fl = hwMap.get(DcMotor.class, "fl");
         br = hwMap.get(DcMotor.class, "br");
         bl = hwMap.get(DcMotor.class, "bl");
-         */
+
 
         //aim = ahwMap.servo.get("aim");
         fr.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
