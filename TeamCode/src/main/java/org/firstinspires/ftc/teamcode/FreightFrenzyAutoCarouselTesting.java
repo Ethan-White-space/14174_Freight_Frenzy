@@ -95,12 +95,15 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
     public int valMid;
     public int valLeft;
 
+    private int shippingElementPlacement = -1; //-1 is pre-detection; 0: left-bottom; 1: mid-mid; 2: right-top
+
     @Override
     public void runOpMode() throws InterruptedException {
 
         //EASY OPEN CV INITIALIZATION
         int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
-        depositcam = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "depositCam"));
+        //int[] viewportContainerIds = OpenCvCameraFactory.getInstance().splitLayoutForMultipleViewports(cameraMonitorViewId, 2, OpenCvCameraFactory.ViewportSplitMethod.VERTICALLY);
+        depositcam = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "depositCam"), cameraMonitorViewId);
         collectCam = hardwareMap.get(WebcamName.class, "collectCam");
 
         depositcam.setPipeline(new shippingElementDetection());
@@ -130,8 +133,8 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
         initTfod();
 
         if (tfod != null) {
-            tfod.activate();
-            telemetry.addData("Tfod: ", "Activated");
+            //tfod.activate();
+            //telemetry.addData("Tfod: ", "Activated");
             // The TensorFlow software will scale the input images from the camera to a lower resolution.
             // This can result in lower detection accuracy at longer distances (> 55cm or 22").
             // If your target is at distance greater than 50 cm (20") you can adjust the magnification value
@@ -174,9 +177,10 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
 
         runtime.reset();
 
+        boolean EOCVstopped = false;
+
         //AUTONOMOUS
         while (opModeIsActive()) {
-
 
             if (valLeft < valMid && valLeft < valRight) {
                 telemetry.addData("valLeft:",  "Lowest");
@@ -190,26 +194,29 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
             telemetry.addData("valMid: ", valMid);
             telemetry.addData("valRight: ", valRight);
 
+            if(getRuntime() > 20 && !EOCVstopped) {
+                depositcam.closeCameraDevice();
+                tfod.activate();
+            }
 
-            if (tfod != null) {
-                List<Recognition> updatedRecognitions = tfod.getUpdatedRecognitions();
-                if (updatedRecognitions != null) {
-                    telemetry.addData("# Object Detected", updatedRecognitions.size());
+            List<Recognition> updatedRecognitions = tfod.getRecognitions();
+            if (updatedRecognitions != null) {
+                telemetry.addData("# Object Detected", updatedRecognitions.size());
 
-                    // step through the list of recognitions and display boundary info.
-                    int i = 0;
-                    for (Recognition recognition : updatedRecognitions) {
-                        telemetry.addData(String.format("label (%d)", i), recognition.getLabel());
-                        telemetry.addData(String.format("  left,top (%d)", i), "%.03f , %.03f",
-                                recognition.getLeft(), recognition.getTop());
-                        telemetry.addData(String.format("  right,bottom (%d)", i), "%.03f , %.03f",
-                                recognition.getRight(), recognition.getBottom());
-                        i++;
-                    }
-                    telemetry.update();
+                // step through the list of recognitions and display boundary info.
+                int i = 0;
+                for (Recognition recognition : updatedRecognitions) {
+                    telemetry.addData(String.format("label (%d)", i), recognition.getLabel());
+                    telemetry.addData(String.format("  left,top (%d)", i), "%.03f , %.03f",
+                            recognition.getLeft(), recognition.getTop());
+                    telemetry.addData(String.format("  right,bottom (%d)", i), "%.03f , %.03f",
+                            recognition.getRight(), recognition.getBottom());
+                    i++;
                 }
             }
 
+
+            telemetry.update();
 
         }
     }
