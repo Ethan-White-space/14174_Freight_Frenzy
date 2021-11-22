@@ -83,7 +83,7 @@ public class FreightFrenzyAutoWarehouseTesting extends LinearOpMode {
     double[] position = {0, 0}; //x, y
     double[] lastEncoderVals = {0, 0}; //l, r
 
-    double[][] path1 = {{100, 100, 0.1, 0.75}, {-100, 200, 0.1, 0.75}, {100, 300, 0.1, 0.75}, {150, 250, 0.1, 0.5}, {100, 100, 0.1, 0.5}, {0, 0, 0.1, 0.75}}; //x, y, speedMin, speedMax
+    double[][] path1 = {{1000, 1000, 0.05, 0.5}, {-1000, 2000, 0.05, 0.5}}; //x, y, speedMin, speedMax
 
     private static float offsetX = 0f/8f;//changing this moves the three rects and the three circles left or right, range : (-2, 2) not inclusive
     private static float offsetY = 0f/8f;//changing this moves the three rects and circles up or down, range: (-4, 4) not inclusive
@@ -202,12 +202,13 @@ public class FreightFrenzyAutoWarehouseTesting extends LinearOpMode {
 
             OpenGLMatrix vuLocation = readVuforiaPosition(allTrackables);
 
-            sleep(100);
+            navigateForward(path1, 30000);
+            stop();
         }
     }
 
     //Navigation Functions
-    public void navigateForward(double[][] targets, double speedMax, double speedMin, double accuracyMultiplier, double timeOut) {
+    public void navigateForward(double[][] targets, double timeOut) {
         double distance = 0;
         double speed = Math.cbrt(0.01*distance);
         double heading = getAbsoluteHeading();
@@ -215,7 +216,8 @@ public class FreightFrenzyAutoWarehouseTesting extends LinearOpMode {
         double[] robotOriginXY = {targets[0][0] - position[0], targets[0][1] - position[1]};
         double[] pointVector = {Math.sqrt((robotOriginXY[0]*robotOriginXY[0]) + (robotOriginXY[1]*robotOriginXY[1])), -Math.atan2(robotOriginXY[0], robotOriginXY[1])}; //mag, angle
         double[] localTargetXY = {pointVector[0]*Math.sin(pointVector[1]-heading), pointVector[0]*Math.cos(pointVector[1]-heading)}; //x, y
-        double headingError = angleWrap(pointVector[1] - heading);
+        double headingError = AngleUnit.normalizeDegrees(pointVector[1] - heading);
+        double timeoutTime = getRuntime() + timeOut;
 
         double minSpeed = targets[0][2];
         double maxSpeed = targets[0][3];
@@ -227,36 +229,77 @@ public class FreightFrenzyAutoWarehouseTesting extends LinearOpMode {
             robotOriginXY[0] = targets[i][0] - position[0];
             robotOriginXY[1] = targets[i][1] - position[1];
             pointVector[0] = Math.sqrt((robotOriginXY[0]*robotOriginXY[0]) + (robotOriginXY[1]*robotOriginXY[1]));
-            pointVector[1] = -Math.atan2(robotOriginXY[0], robotOriginXY[1]);
-            localTargetXY[0] = pointVector[0]*Math.sin(pointVector[1]-heading);
-            localTargetXY[1] = pointVector[0]*Math.cos(pointVector[1]-heading);
+            pointVector[1] = AngleUnit.normalizeDegrees(Math.toDegrees(Math.atan2(robotOriginXY[1], robotOriginXY[0]))-90);
+            if (pointVector[1] == Double.NaN) {
+                if (robotOriginXY[0] >= 0) {pointVector[1] = 90;}
+                else {pointVector[1] = -90;}
+            }
+            localTargetXY[0] = pointVector[0]*Math.sin(Math.toRadians(pointVector[1]-heading));
+            localTargetXY[1] = pointVector[0]*Math.cos(Math.toRadians(pointVector[1]-heading));
             distance = pointVector[0];
-            headingError = angleWrap(pointVector[1] - heading);
             minSpeed = targets[i][2];
             maxSpeed = targets[i][3];
-            tPower = (maxSpeed-minSpeed)*(Math.pow(0.01*distance, 1/3))+minSpeed;
+            tPower = Range.clip((maxSpeed-minSpeed)*(Math.pow(0.01*localTargetXY[1], 1/3))+minSpeed, minSpeed, maxSpeed);
 
-            while (distance > 30) {
+            headingError = AngleUnit.normalizeDegrees(pointVector[1] - heading);
+            if (headingError >= 0) {
+                rPower = 0.2*(1-tPower)*Range.clip(Math.pow(0.1*Math.abs(headingError), 1/1.8) ,-1,1);
+            } else {
+                rPower = 0.2*(1-tPower)*Range.clip(-Math.pow(0.1*Math.abs(headingError), 1/1.8) ,-1,1);
+            }
+
+            while (distance > 30 && getRuntime() < timeoutTime && whileChecks()) {
+                heading = getAbsoluteHeading();
                 robotOriginXY[0] = targets[i][0] - position[0];
                 robotOriginXY[1] = targets[i][1] - position[1];
                 pointVector[0] = Math.sqrt((robotOriginXY[0]*robotOriginXY[0]) + (robotOriginXY[1]*robotOriginXY[1]));
-                pointVector[1] = -Math.atan2(robotOriginXY[0], robotOriginXY[1]);
-                localTargetXY[0] = pointVector[0]*Math.sin(pointVector[1]-heading);
-                localTargetXY[1] = pointVector[0]*Math.cos(pointVector[1]-heading);
+                pointVector[1] = AngleUnit.normalizeDegrees(Math.toDegrees(Math.atan2(robotOriginXY[1], robotOriginXY[0]))-90);
+                if (pointVector[1] == Double.NaN) {
+                    if (robotOriginXY[0] >= 0) {pointVector[1] = 90;}
+                    else {pointVector[1] = -90;}
+                }
+                localTargetXY[0] = pointVector[0]*Math.sin(Math.toRadians(pointVector[1]-heading));
+                localTargetXY[1] = pointVector[0]*Math.cos(Math.toRadians(pointVector[1]-heading));
                 distance = pointVector[0];
                 minSpeed = targets[i][2];
                 maxSpeed = targets[i][3];
-                tPower = Range.clip((maxSpeed-minSpeed)*(Math.pow(0.01*distance, 1/3))+minSpeed, minSpeed, maxSpeed);
+                tPower = Range.clip((maxSpeed-minSpeed)*(Math.pow(0.01*localTargetXY[1], 1/3))+minSpeed, minSpeed, maxSpeed);
 
-                headingError = angleWrap(pointVector[1] - heading);
-                rPower = (1-tPower)*Range.clip(Math.pow(0.1*headingError, 1/1.8) ,1,1);
+                headingError = AngleUnit.normalizeDegrees(pointVector[1] - heading);
+                if (headingError >= 0) {
+                    rPower = 0.6*(1-tPower)*Range.clip(Math.pow(0.1*Math.abs(headingError), 1/1.8) ,-1,1);
+                } else {
+                    rPower = 0.6*(1-tPower)*Range.clip(-Math.pow(0.1*Math.abs(headingError), 1/1.8) ,-1,1);
+                }
+
+                telemetry.addData("bl: ", robot.bl.getCurrentPosition());
+                telemetry.addData("fr: ", robot.fr.getCurrentPosition());
+                telemetry.addData("x: ", position[0]);
+                telemetry.addData("y: ", position[1]);
+                telemetry.addData("rox: ", robotOriginXY[0]);
+                telemetry.addData("roy: ", robotOriginXY[1]);
+                telemetry.addData("vectMag: ", pointVector[0]);
+                telemetry.addData("vectAng: ", pointVector[1]);
+                telemetry.addData("lox: ", localTargetXY[0]);
+                telemetry.addData("loy: ", localTargetXY[1]);
+                telemetry.addData("distance: ", distance);
+                telemetry.addData("heading: ", getAbsoluteHeading());
+                telemetry.addData("headingE: ", headingError);
+                telemetry.addData("power: ", tPower);
+                telemetry.addData("rotation: ", rPower);
+                telemetry.update();
 
                 setMotorSpeed(tPower-rPower, tPower+rPower);
+                localize();
             }
 
             i++;
         }
         setMotorSpeed(0, 0);
+    }
+
+    boolean whileChecks() {
+        return !isStopRequested() && opModeIsActive();
     }
 
     public void forward(double distance, double speedMod, double error, double timeout) {
@@ -281,12 +324,12 @@ public class FreightFrenzyAutoWarehouseTesting extends LinearOpMode {
     }
 
     public void localize() {
-        double[] encoderVals = {robot.bl.getCurrentPosition(), robot.br.getCurrentPosition()}; //l, r
+        double[] encoderVals = {robot.bl.getCurrentPosition(), robot.fr.getCurrentPosition()}; //l, r
         double[] encoderDif = {encoderVals[0] - lastEncoderVals[0],encoderVals[1] - lastEncoderVals[1]}; //delta l, delta r, delta a
         double averageDif = (encoderDif[0] + encoderDif[1])/2;
 
-        position[0] = position[0] + (averageDif * -Math.sin(getAbsoluteHeading()));
-        position[1] = position[1] + (averageDif * Math.cos(getAbsoluteHeading()));
+        position[0] = position[0] + (averageDif * -Math.sin(Math.toRadians(getAbsoluteHeading())));
+        position[1] = position[1] + (averageDif * Math.cos(Math.toRadians(getAbsoluteHeading())));
 
         lastEncoderVals[0] = encoderVals[0];
         lastEncoderVals[1] = encoderVals[1];
