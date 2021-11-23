@@ -19,13 +19,14 @@ public class FFHardwareMap
     public DcMotor bl;
 
     //DEFINE SERVOS
-    //public Servo kicker;
+    public Servo lookieLookie;
 
 
 
     //CONSTANTS
 
-    //public final double height = 26;
+    public final double[] lookieLimits = {0.17, 1};
+    public final double lookieCentered = 0.5;
 
     /* local OpMode members. */
     HardwareMap hwMap =  null;
@@ -48,6 +49,7 @@ public class FFHardwareMap
         br = hwMap.get(DcMotor.class, "br");
         bl = hwMap.get(DcMotor.class, "bl");
 
+        lookieLookie = hwMap.get(Servo.class, "lookieLookie");
 
         //aim = ahwMap.servo.get("aim");
         //fr.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -55,9 +57,9 @@ public class FFHardwareMap
         //br.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         bl.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
 
-        fr.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        br.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         fl.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        br.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        fr.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         bl.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         fr.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -73,15 +75,9 @@ public class FFHardwareMap
 
         //flyWheel.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
-        //arm.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
-        //armOut.setPosition(armDown);
-
         //robot.init(hardwareMap);
 
-        //aim.setPosition(aimInit);
-
-        //Inititialize Servos
+        lookieLookie.setPosition(lookieCentered);
 
     }
 }

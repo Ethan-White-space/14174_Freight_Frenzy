@@ -50,8 +50,8 @@ import com.qualcomm.robotcore.util.Range;
  * Remove or comment out the @Disabled line to add this opmode to the Driver Station OpMode list
  */
 
-@TeleOp(name="Basic: Linear OpMode", group="Linear Opmode")
-@Disabled
+@TeleOp(name="TeleOp", group="Linear Opmode")
+//@Disabled
 public class Freight_Frenzy_Testing extends LinearOpMode {
 
     // Declare OpMode members.
@@ -79,15 +79,25 @@ public class Freight_Frenzy_Testing extends LinearOpMode {
         // run until the end of the match (driver presses STOP)
         while (opModeIsActive()) {
 
-            if (gamepad1.left_stick_y > 0.05 && gamepad1.right_trigger > 0.1) {
-                forward = 0.2*gamepad1.left_stick_y*gamepad1.left_stick_y;
+            if (Math.abs(gamepad1.left_stick_y) > 0.05 && gamepad1.right_trigger > 0.1) {
+                if (gamepad1.left_stick_y >= 0) {
+                    forward = -0.2*gamepad1.left_stick_y*gamepad1.left_stick_y;
+                } else {
+                    forward = 0.2*gamepad1.left_stick_y*gamepad1.left_stick_y;
+                }
+            } else if (Math.abs(gamepad1.left_stick_y) > 0.05) {
+                if (gamepad1.left_stick_y >= 0) {
+                    forward = -0.9*gamepad1.left_stick_y*gamepad1.left_stick_y;
+                } else {
+                    forward = 0.9*gamepad1.left_stick_y*gamepad1.left_stick_y;
+                }
             } else {
-                forward = 0.9*gamepad1.left_stick_y*gamepad1.left_stick_y;
+                forward = 0;
             }
 
-            if (gamepad1.right_stick_x > 0.05) {
-                turning = 0.1 * gamepad1.right_stick_x;
-            }
+            if (Math.abs(gamepad1.right_stick_x) > 0.05) {
+                turning = 0.6 * gamepad1.right_stick_x;
+            } else {turning = 0;}
 
             lSpeed = Range.clip(forward + turning, -1, 1);
             rSpeed = Range.clip(forward - turning, -1, 1);
@@ -96,7 +106,10 @@ public class Freight_Frenzy_Testing extends LinearOpMode {
 
             // Show the elapsed game time and wheel power.
             telemetry.addData("Status", "Run Time: " + runtime.toString());
-            telemetry.addData("Motors", 0);
+            telemetry.addData("forward", forward);
+            telemetry.addData("turning: ", turning);
+            telemetry.addData("r: ", rSpeed);
+            telemetry.addData("l: ", lSpeed);
             telemetry.update();
         }
     }

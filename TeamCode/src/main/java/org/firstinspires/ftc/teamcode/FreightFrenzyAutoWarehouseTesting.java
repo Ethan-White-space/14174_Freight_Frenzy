@@ -200,7 +200,7 @@ public class FreightFrenzyAutoWarehouseTesting extends LinearOpMode {
             telemetry.addData("valRight: ", valRight);
             telemetry.update();
 
-            OpenGLMatrix vuLocation = readVuforiaPosition(allTrackables);
+            //OpenGLMatrix vuLocation = readVuforiaPosition(allTrackables);
 
             navigateForward(path1, 30000);
             stop();

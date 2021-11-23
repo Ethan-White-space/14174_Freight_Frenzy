@@ -95,6 +95,8 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
     public int valMid;
     public int valLeft;
 
+    double scanDirection = -1;
+
     private int shippingElementPlacement = -1; //-1 is pre-detection; 0: left-bottom; 1: mid-mid; 2: right-top
 
     @Override
@@ -109,6 +111,7 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
         depositcam.setPipeline(new shippingElementDetection());
 
         depositcam.setMillisecondsPermissionTimeout(2500); // Timeout for obtaining permission is configurable. Set before opening.
+        /*
         depositcam.openCameraDeviceAsync(new OpenCvCamera.AsyncCameraOpenListener()
         {
             @Override
@@ -123,6 +126,8 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
 
             }
         });
+
+         */
 
         //ADDITIONAL VUFORIA INITIALIZATION
         VuforiaLocalizer.Parameters parameters = new VuforiaLocalizer.Parameters(cameraMonitorViewId);
@@ -161,6 +166,7 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
 
         //Setup The Telemetry Dashboard
         composeTelemetry();
+        tfod.activate();
 
         //Initilization
 
@@ -182,6 +188,7 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
         //AUTONOMOUS
         while (opModeIsActive()) {
 
+            /*
             if (valLeft < valMid && valLeft < valRight) {
                 telemetry.addData("valLeft:",  "Lowest");
             } else if (valMid < valLeft && valMid < valRight) {
@@ -199,55 +206,157 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
                 tfod.activate();
             }
 
-            List<Recognition> updatedRecognitions = tfod.getRecognitions();
-            if (updatedRecognitions != null) {
-                telemetry.addData("# Object Detected", updatedRecognitions.size());
+             */
+            while(getRuntime()<10 && whileChecks()) {
+                List<Recognition> updatedRecognitions = tfod.getRecognitions();
+                if (updatedRecognitions != null) {
+                    telemetry.addData("# Object Detected", updatedRecognitions.size());
 
-                // step through the list of recognitions and display boundary info.
-                int i = 0;
-                for (Recognition recognition : updatedRecognitions) {
-                    telemetry.addData(String.format("label (%d)", i), recognition.getLabel());
-                    telemetry.addData(String.format("  left,top (%d)", i), "%.03f , %.03f",
-                            recognition.getLeft(), recognition.getTop());
-                    telemetry.addData(String.format("  right,bottom (%d)", i), "%.03f , %.03f",
-                            recognition.getRight(), recognition.getBottom());
-                    i++;
+                    // step through the list of recognitions and display boundary info.
+                    int i = 0;
+                    for (Recognition recognition : updatedRecognitions) {
+                        telemetry.addData(String.format("label (%d)", i), recognition.getLabel());
+                        telemetry.addData(String.format("  left,top (%d)", i), "%.03f , %.03f",
+                                recognition.getLeft(), recognition.getTop());
+                        telemetry.addData(String.format("  right,bottom (%d)", i), "%.03f , %.03f",
+                                recognition.getRight(), recognition.getBottom());
+                        i++;
+                    }
+                }
+                telemetry.addData("runtime: ", getRuntime());
+                telemetry.update();
+            }
+            //goToTFODTarget();
+            duckyDrive();
+            sleep(1000);
+            stop();
+        }
+    }
+
+    public void duckyDrive () {
+        boolean turnFinished = false;
+        while (!turnFinished && whileChecks()) {
+            double relAng = duckyRelAngle();
+            if (relAng == 404) {
+                duckyScan();
+            } else if (Math.abs(relAng)>5){
+                double turnSpeed = 0;
+                if(relAng > 0) {turnSpeed = 0.2;}
+                else {turnSpeed = -0.2;}
+                setMotorSpeed(turnSpeed, -turnSpeed);
+            } else {
+                setMotorSpeed(0, 0);
+                turnFinished = true;
+            }
+        }
+        driveStraight(700, 0.4, 40, 8);
+    }
+
+    public double duckyRelAngle () {
+        int index = -1;
+        List<Recognition> updatedRecognitions = tfod.getRecognitions();
+        if (updatedRecognitions != null) {
+            telemetry.addData("# Object Detected", updatedRecognitions.size());
+            for (int i = 0; i < updatedRecognitions.size(); i++) {
+                if (updatedRecognitions.get(i).getLabel() == "Duck") {
+                    index = i;
                 }
             }
+        }
+        if (index == -1) {
+            duckyScan();
+            return 404;
+        } else {
+            double centerPix = (updatedRecognitions.get(index).getLeft() + updatedRecognitions.get(index).getRight())/2;
+            double offset = centerPix - 275;
+            robot.lookieLookie.setPosition(Range.clip(robot.lookieLookie.getPosition() + (offset/160000), robot.lookieLimits[0], robot.lookieLimits[1]));
+            return (robot.lookieLookie.getPosition()*190)-95;
+        }
+    }
 
-
-            telemetry.update();
-
+    public void duckyScan() {
+        int index = -1;
+        List<Recognition> updatedRecognitions = tfod.getRecognitions();
+        if (updatedRecognitions != null) {
+            telemetry.addData("# Object Detected", updatedRecognitions.size());
+            for (int i = 0; i < updatedRecognitions.size(); i++) {
+                if (updatedRecognitions.get(i).getLabel() == "Duck") {
+                    index = i;
+                }
+            }
+        }
+        if (index == -1) {
+            if(robot.lookieLookie.getPosition() < 0.05 || robot.lookieLookie.getPosition() > 0.95) {
+                scanDirection = scanDirection * -1;
+            }
+            robot.lookieLookie.setPosition(robot.lookieLookie.getPosition() + 0.0002*scanDirection);
+        } else {
+            return;
         }
     }
 
     public void goToTFODTarget() {
         if (tfod != null) {
-            List<Recognition> updatedRecognitions = tfod.getUpdatedRecognitions();
+            int index = -1;
+            List<Recognition> updatedRecognitions = tfod.getRecognitions();
             if (updatedRecognitions == null) {
                 return;
             }
             telemetry.addData("# Object Detected", updatedRecognitions.size());
+            for (int i = 0; i < updatedRecognitions.size(); i++) {
+                if (updatedRecognitions.get(i).getLabel() == "Duck") {
+                    index = i;
+                }
+            }
+            if (index == -1) {
+                return;
+            }
 
             double pos = (updatedRecognitions.get(0)).getRight();
             double posError = pos - 640;
 
             while (Math.abs(posError) > 30 && whileChecks() && updatedRecognitions != null) {
+                index = -1;
+                updatedRecognitions = tfod.getRecognitions();
+                if (updatedRecognitions == null) {
+                    telemetry.addData("tfod: ", "null");
+                    telemetry.update();
+                    return;
+                }
+                telemetry.addData("# Object Detected", updatedRecognitions.size());
+                for (int i = 0; i < updatedRecognitions.size(); i++) {
+                    if (updatedRecognitions.get(i).getLabel() == "Duck") {
+                        index = i;
+                    }
+                }
+                if (index == -1) {
+                    telemetry.addData("index: ", "failed");
+                    telemetry.update();
+                    return;
+                }
+
+                pos = (updatedRecognitions.get(index)).getRight();
+                posError = pos - 300;
+
                 if (posError > 0) {
                     setMotorSpeed(0.2, -0.2);
                 } else {
                     setMotorSpeed(-0.2, 0.2);
                 }
                 localize();
+                telemetry.addData("pos: ", pos);
+                telemetry.addData("posE: ", posError);
+                telemetry.update();
             }
             setMotorSpeed(0, 0);
             sleep(1000);
             while (updatedRecognitions != null && whileChecks()) {
+                updatedRecognitions = tfod.getUpdatedRecognitions();
                 setMotorSpeed(0.2, 0.2);
                 localize();
             }
             setMotorSpeed(0, 0);
-            driveStraight(200, 0.3, 20, 3000);
+            driveStraight(800, 0.2, 20, 3000);
         }
     }
 
@@ -259,7 +368,7 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
     }
 
     public void driveStraight (double duration, double speedPercent, double error, double time) {
-        double position = robot.br.getCurrentPosition();
+        double position = robot.fr.getCurrentPosition();
         double target = position + duration;
         double heading = getAbsoluteHeading();
         double distanceToTargetStart = Math.abs(target - position);
@@ -271,7 +380,7 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
         double startTime = getRuntime();
 
         while (Math.abs(distanceToTarget) > error && !isStopRequested() && getRuntime() < startTime + time) {
-            position = robot.br.getCurrentPosition();
+            position = robot.fr.getCurrentPosition();
             distanceToTarget = target - position;
             percentToTarget = distanceToTarget/distanceToTargetStart;
             if (percentToTarget >= 0) {
@@ -322,7 +431,7 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
     }
 
     public void localize() {
-        double[] encoderVals = {robot.bl.getCurrentPosition(), robot.br.getCurrentPosition()}; //l, r
+        double[] encoderVals = {robot.bl.getCurrentPosition(), robot.fr.getCurrentPosition()}; //l, r
         double[] encoderDif = {encoderVals[0] - lastEncoderVals[0],encoderVals[1] - lastEncoderVals[1]}; //delta l, delta r, delta a
         double averageDif = (encoderDif[0] + encoderDif[1])/2;
 
