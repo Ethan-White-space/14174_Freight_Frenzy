@@ -87,17 +87,25 @@ public class Freight_Frenzy_Testing extends LinearOpMode {
                 }
             } else if (Math.abs(gamepad1.left_stick_y) > 0.05) {
                 if (gamepad1.left_stick_y >= 0) {
-                    forward = -0.9*gamepad1.left_stick_y*gamepad1.left_stick_y;
+                    forward = -gamepad1.left_stick_y*gamepad1.left_stick_y;
                 } else {
-                    forward = 0.9*gamepad1.left_stick_y*gamepad1.left_stick_y;
+                    forward = gamepad1.left_stick_y*gamepad1.left_stick_y;
                 }
             } else {
                 forward = 0;
             }
 
             if (Math.abs(gamepad1.right_stick_x) > 0.05) {
-                turning = 0.6 * gamepad1.right_stick_x;
+                if (gamepad1.right_trigger > 0.1) {
+                    turning = 02*gamepad1.right_stick_x;
+                } else {
+                    turning = gamepad1.right_stick_x;
+                }
             } else {turning = 0;}
+
+            if (gamepad1.right_bumper || gamepad1.left_bumper) {
+                forward = -forward;
+            }
 
             lSpeed = Range.clip(forward + turning, -1, 1);
             rSpeed = Range.clip(forward - turning, -1, 1);

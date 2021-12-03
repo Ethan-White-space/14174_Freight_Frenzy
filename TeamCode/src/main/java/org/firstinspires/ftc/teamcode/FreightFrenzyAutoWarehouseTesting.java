@@ -202,12 +202,12 @@ public class FreightFrenzyAutoWarehouseTesting extends LinearOpMode {
 
             //OpenGLMatrix vuLocation = readVuforiaPosition(allTrackables);
 
-            navigateForward(path1, 30000);
             stop();
         }
     }
 
     //Navigation Functions
+    /*
     public void navigateForward(double[][] targets, double timeOut) {
         double distance = 0;
         double speed = Math.cbrt(0.01*distance);
@@ -297,23 +297,115 @@ public class FreightFrenzyAutoWarehouseTesting extends LinearOpMode {
         }
         setMotorSpeed(0, 0);
     }
+     */
 
-    boolean whileChecks() {
-        return !isStopRequested() && opModeIsActive();
-    }
+    public void driveStraight (double duration, double speedPercent, double error, double time) {
+        double position = robot.fr.getCurrentPosition();
+        double target = position + duration;
+        double heading = getAbsoluteHeading();
+        double distanceToTargetStart = Math.abs(target - position);
+        double distanceToTarget = target - position;
+        double percentToTarget = distanceToTarget/distanceToTargetStart;
+        double speed = 0;
+        double[] wheelSpeed = new double[2]; //l, r
+        double turnSpeed = ((heading - getAbsoluteHeading())/20);
+        double startTime = getRuntime();
 
-    public void forward(double distance, double speedMod, double error, double timeout) {
+        while (Math.abs(distanceToTarget) > error && whileChecks() && getRuntime() < startTime + time) {
+            position = robot.fr.getCurrentPosition();
+            distanceToTarget = target - position;
+            percentToTarget = distanceToTarget/distanceToTargetStart;
+            if (percentToTarget >= 0) {
+                speed = ((-((percentToTarget-1)*(percentToTarget-1)*(percentToTarget-1)*(percentToTarget-1))+1)*speedPercent)*0.9;
+                if (Math.abs(speed) < 0.05) {speed = 0.05;}
+            }else if (percentToTarget < 0) {
+                speed = -((-((percentToTarget+1)*(percentToTarget+1)*(percentToTarget+1)*(percentToTarget+1))+1)*speedPercent)*0.9;
+                if (Math.abs(speed) < 0.05) {speed = -0.05;}
+            }
 
-    }
+            turnSpeed = -((heading - getAbsoluteHeading())/40);
 
-    public void turnTest(double target, double speedPercent) {
-        double error = Math.toDegrees(angleWrap(Math.toRadians(target - getAbsoluteHeading())));
-        final double startError = Math.abs(error);
-        while (Math.abs(error) > 4) {
-            error = Math.toDegrees(angleWrap(Math.toRadians(target - getAbsoluteHeading())));
-            setMotorSpeed((error/startError)*speedPercent, -(error/startError)*speedPercent);
+            telemetry.addData("DaS:", distanceToTargetStart);
+            telemetry.addData("Target:", target);
+            telemetry.addData("Position:", position);
+            telemetry.addData("Distance:", distanceToTarget);
+            telemetry.addData("Percent:", percentToTarget);
+            telemetry.addData("Speed:", speed);
+            telemetry.addData("Turn Speed:", turnSpeed);
+            telemetry.update();
+
+            wheelSpeed[0] = Range.clip(speed, -0.9, 0.9) + Range.clip(turnSpeed, -0.1, 0.1);
+            wheelSpeed[1] = Range.clip(speed, -0.9, 0.9) - Range.clip(turnSpeed, -0.1, 0.1);
+
+            setMotorSpeed(wheelSpeed[0], wheelSpeed[1]);
+            localize();
+        };
+
+        setMotorSpeed(0, 0);
+    };
+
+    public void turn (double target, double speedPercent, double error) {
+        double DaS = Math.abs(target - getAbsoluteHeading());
+        double distance = target - getAbsoluteHeading();
+        double percent = distance/DaS;
+
+        double speed = 0;
+        double[] wheelSpeed = new double[4]; //fl, fr, bl, br
+
+        while (Math.abs(distance) > error && !isStopRequested()) {
+            distance = target - getAbsoluteHeading();
+            percent = distance/DaS;
+
+            speed = speedPercent*(0.9*(Math.cbrt(percent)));
+
+            wheelSpeed[0] = -speed;
+            wheelSpeed[1] = speed;
+
+
+            setMotorSpeed(wheelSpeed[0], wheelSpeed[1]);
         }
-    }
+        wheelSpeed[0] = 0;
+        wheelSpeed[1] = 0;
+        wheelSpeed[2] = 0;
+        wheelSpeed[3] = 0;
+
+        setMotorSpeed(wheelSpeed[0], wheelSpeed[1]);
+    };
+
+    public void arcTurn (double target, double speedPercent, double error, char side) {
+        double DaS = Math.abs(target - getAbsoluteHeading());
+        double distance = target - getAbsoluteHeading();
+        double percent = distance/DaS;
+
+        double speed = 0;
+        double[] wheelSpeed = new double[4]; //fl, fr, bl, br
+
+        while (Math.abs(distance) > error && !isStopRequested()) {
+            distance = target - getAbsoluteHeading();
+            percent = distance/DaS;
+
+            speed = speedPercent*(0.9*(Math.cbrt(percent)));
+
+            if (side == 'l') {
+                wheelSpeed[0] = -speed;
+                wheelSpeed[1] = 0;
+            } else {
+                wheelSpeed[0] = 0;
+                wheelSpeed[1] = speed;
+            }
+
+            localize();
+            setMotorSpeed(wheelSpeed[0], wheelSpeed[1]);
+        }
+        wheelSpeed[0] = 0;
+        wheelSpeed[1] = 0;
+        wheelSpeed[2] = 0;
+        wheelSpeed[3] = 0;
+
+        setMotorSpeed(wheelSpeed[0], wheelSpeed[1]);
+    };
+
+
 
     //Helper Functions
     public void setMotorSpeed(double l, double r) {
@@ -429,6 +521,10 @@ public class FreightFrenzyAutoWarehouseTesting extends LinearOpMode {
         telemetry.update();
 
         return lastLocation;
+    }
+
+    boolean whileChecks() {
+        return !isStopRequested() && opModeIsActive();
     }
 
     void identifyTarget(int targetIndex, String targetName, float dx, float dy, float dz, float rx, float ry, float rz) {

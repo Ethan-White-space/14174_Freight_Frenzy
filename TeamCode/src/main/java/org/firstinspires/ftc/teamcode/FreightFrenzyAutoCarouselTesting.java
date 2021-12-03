@@ -295,71 +295,6 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
         }
     }
 
-    public void goToTFODTarget() {
-        if (tfod != null) {
-            int index = -1;
-            List<Recognition> updatedRecognitions = tfod.getRecognitions();
-            if (updatedRecognitions == null) {
-                return;
-            }
-            telemetry.addData("# Object Detected", updatedRecognitions.size());
-            for (int i = 0; i < updatedRecognitions.size(); i++) {
-                if (updatedRecognitions.get(i).getLabel() == "Duck") {
-                    index = i;
-                }
-            }
-            if (index == -1) {
-                return;
-            }
-
-            double pos = (updatedRecognitions.get(0)).getRight();
-            double posError = pos - 640;
-
-            while (Math.abs(posError) > 30 && whileChecks() && updatedRecognitions != null) {
-                index = -1;
-                updatedRecognitions = tfod.getRecognitions();
-                if (updatedRecognitions == null) {
-                    telemetry.addData("tfod: ", "null");
-                    telemetry.update();
-                    return;
-                }
-                telemetry.addData("# Object Detected", updatedRecognitions.size());
-                for (int i = 0; i < updatedRecognitions.size(); i++) {
-                    if (updatedRecognitions.get(i).getLabel() == "Duck") {
-                        index = i;
-                    }
-                }
-                if (index == -1) {
-                    telemetry.addData("index: ", "failed");
-                    telemetry.update();
-                    return;
-                }
-
-                pos = (updatedRecognitions.get(index)).getRight();
-                posError = pos - 300;
-
-                if (posError > 0) {
-                    setMotorSpeed(0.2, -0.2);
-                } else {
-                    setMotorSpeed(-0.2, 0.2);
-                }
-                localize();
-                telemetry.addData("pos: ", pos);
-                telemetry.addData("posE: ", posError);
-                telemetry.update();
-            }
-            setMotorSpeed(0, 0);
-            sleep(1000);
-            while (updatedRecognitions != null && whileChecks()) {
-                updatedRecognitions = tfod.getUpdatedRecognitions();
-                setMotorSpeed(0.2, 0.2);
-                localize();
-            }
-            setMotorSpeed(0, 0);
-            driveStraight(800, 0.2, 20, 3000);
-        }
-    }
-
     public void localizedDrive(double xTarget, double yTarget, double speedPercent, double error, double time) {
         double desiredHeading = Math.atan2(yTarget-position[1], xTarget-position[0]);
         turnTest(desiredHeading, speedPercent);
@@ -435,8 +370,8 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
         double[] encoderDif = {encoderVals[0] - lastEncoderVals[0],encoderVals[1] - lastEncoderVals[1]}; //delta l, delta r, delta a
         double averageDif = (encoderDif[0] + encoderDif[1])/2;
 
-        position[0] = position[0] + (averageDif * -Math.sin(getAbsoluteHeading()));
-        position[1] = position[1] + (averageDif * Math.cos(getAbsoluteHeading()));
+        position[0] = position[0] + (averageDif * -Math.sin(Math.toRadians(getAbsoluteHeading())));
+        position[1] = position[1] + (averageDif * Math.cos(Math.toRadians(getAbsoluteHeading())));
 
         lastEncoderVals[0] = encoderVals[0];
         lastEncoderVals[1] = encoderVals[1];
