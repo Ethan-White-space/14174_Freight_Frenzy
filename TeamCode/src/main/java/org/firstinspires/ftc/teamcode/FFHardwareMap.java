@@ -20,6 +20,7 @@ public class FFHardwareMap
 
     public DcMotor arm;
     public DcMotor lift;
+    public DcMotor carousel;
 
     //DEFINE SERVOS
     public Servo cap;
@@ -29,14 +30,29 @@ public class FFHardwareMap
     public CRServo collect;
 
 
-    //public Servo lookieLookie;
+    public Servo cameraServo;
 
 
 
     //CONSTANTS
 
-    //public final double[] lookieLimits = {0.17, 1};
-    //public final double lookieCentered = 0.5;
+    public final double[] cameraServoLimits = {0.17, 1};
+    public final double cameraServoCentered = 0.5;
+
+    public final double depoUp = 0;
+    public final double depoDown = 0;
+    public final double capUp = 0;
+    public final double capDown = 0;
+    public final double liftUp = 0;
+    public final double liftTop = 0;
+    public final double liftMid = 0;
+    public final double liftDown = 0;
+    public final double collectUp = 0;
+    public final double collectDown = 0;
+    public final double clawOpen = 0;
+    public final double clawClosed = 0;
+
+    public final double carouselSpeed = 0;
 
     /* local OpMode members. */
     HardwareMap hwMap =  null;
@@ -61,6 +77,7 @@ public class FFHardwareMap
 
         arm = hwMap.get(DcMotor.class, "collectArm");
         lift = hwMap.get(DcMotor.class, "lift");
+        carousel = hwMap.get(DcMotor.class, "carousel");
 
         cap = hwMap.get(Servo.class, "cap");
         capArm = hwMap.get(Servo.class, "capArm");
@@ -77,6 +94,7 @@ public class FFHardwareMap
 
         arm.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         lift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        carousel.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
 
         br.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         fl.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
@@ -85,6 +103,7 @@ public class FFHardwareMap
 
         arm.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         lift.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        carousel.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         fr.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         fl.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -93,15 +112,20 @@ public class FFHardwareMap
 
         arm.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         lift.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        carousel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         fl.setDirection(DcMotorSimple.Direction.REVERSE);
         fr.setDirection(DcMotorSimple.Direction.FORWARD);
         bl.setDirection(DcMotorSimple.Direction.REVERSE);
         br.setDirection(DcMotorSimple.Direction.FORWARD);
 
+        arm.setDirection(DcMotorSimple.Direction.FORWARD);
+        lift.setDirection(DcMotorSimple.Direction.FORWARD);
+        carousel.setDirection(DcMotorSimple.Direction.FORWARD);
+
         //robot.init(hardwareMap);
 
-        //lookieLookie.setPosition(lookieCentered);
+        cameraServo.setPosition(cameraServoCentered);
 
     }
 }

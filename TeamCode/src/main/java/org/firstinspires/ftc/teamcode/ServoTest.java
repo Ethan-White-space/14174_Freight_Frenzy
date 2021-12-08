@@ -41,7 +41,7 @@ public class ServoTest extends LinearOpMode {
         telemetry.addData("Status", "Initialized");
         telemetry.update();
 
-        Servo1 = hardwareMap.servo.get("lookieLookie");
+        Servo1 = hardwareMap.servo.get("deposit");
         //Servo2 = hardwareMap.servo.get("armOut");
         //CRServo1 = hardwareMap.crservo.get("slide");
 

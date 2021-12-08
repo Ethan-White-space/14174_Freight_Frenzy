@@ -269,8 +269,8 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
         } else {
             double centerPix = (updatedRecognitions.get(index).getLeft() + updatedRecognitions.get(index).getRight())/2;
             double offset = centerPix - 275;
-            robot.lookieLookie.setPosition(Range.clip(robot.lookieLookie.getPosition() + (offset/160000), robot.lookieLimits[0], robot.lookieLimits[1]));
-            return (robot.lookieLookie.getPosition()*190)-95;
+            robot.cameraServo.setPosition(Range.clip(robot.cameraServo.getPosition() + (offset/160000), robot.cameraServoLimits[0], robot.cameraServoLimits[1]));
+            return (robot.cameraServo.getPosition()*190)-95;
         }
     }
 
@@ -286,10 +286,10 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
             }
         }
         if (index == -1) {
-            if(robot.lookieLookie.getPosition() < 0.05 || robot.lookieLookie.getPosition() > 0.95) {
+            if(robot.cameraServo.getPosition() < 0.05 || robot.cameraServo.getPosition() > 0.95) {
                 scanDirection = scanDirection * -1;
             }
-            robot.lookieLookie.setPosition(robot.lookieLookie.getPosition() + 0.0002*scanDirection);
+            robot.cameraServo.setPosition(robot.cameraServo.getPosition() + 0.0002*scanDirection);
         } else {
             return;
         }
