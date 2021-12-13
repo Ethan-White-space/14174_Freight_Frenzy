@@ -137,14 +137,14 @@ public class Freight_Frenzy_Testing extends LinearOpMode {
                 //ALTERNATE RUN MODE
                 telemetry.addData("RUN MODE: ", "ALTERNATE");
                 //LIFT
-                if (gamepad2.right_stick_y > 0.05 && robot.lift.getCurrentPosition() >= robot.liftDown && robot.lift.getCurrentPosition() <= robot.liftUp) {
+                if (Math.abs(gamepad2.right_stick_y) > 0.05 /* && robot.lift.getCurrentPosition() >= robot.liftDown && robot.lift.getCurrentPosition() <= robot.liftUp */) {
                     robot.lift.setPower(-gamepad2.right_stick_y);
                 } else {
                     robot.lift.setPower(0);
                 }
 
                 //COLLECTION ARM
-                if (gamepad2.left_stick_y > 0.05 && robot.arm.getCurrentPosition() >= robot.collectDown && robot.arm.getCurrentPosition() <= robot.collectUp) {
+                if (Math.abs(gamepad2.left_stick_y) > 0.05 /* && robot.arm.getCurrentPosition() >= robot.collectDown && robot.arm.getCurrentPosition() <= robot.collectUp */) {
                     robot.arm.setPower(-gamepad2.left_stick_y);
                 } else {
                     robot.arm.setPower(0);
@@ -238,8 +238,7 @@ public class Freight_Frenzy_Testing extends LinearOpMode {
 
             // Show the elapsed game time and wheel power.
             telemetry.addData("Status", "Run Time: " + runtime.toString());
-            telemetry.addData("r: ", rSpeed);
-            telemetry.addData("l: ", lSpeed);
+            telemetry.addData("lift: ", robot.lift.getCurrentPosition());
 
             telemetry.update();
         }

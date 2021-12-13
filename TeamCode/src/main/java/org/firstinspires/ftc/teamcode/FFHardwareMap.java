@@ -70,20 +70,20 @@ public class FFHardwareMap
 
         // Define and Initialize Motors
 
-        fr = hwMap.get(DcMotor.class, "fr");
-        fl = hwMap.get(DcMotor.class, "fl");
-        br = hwMap.get(DcMotor.class, "br");
-        bl = hwMap.get(DcMotor.class, "bl");
+        fl = hwMap.get(DcMotor.class, "fl");            //CH0
+        fr = hwMap.get(DcMotor.class, "fr");            //CH1
+        bl = hwMap.get(DcMotor.class, "bl");            //CH2
+        br = hwMap.get(DcMotor.class, "br");            //CH3
 
-        arm = hwMap.get(DcMotor.class, "collectArm");
-        lift = hwMap.get(DcMotor.class, "lift");
-        carousel = hwMap.get(DcMotor.class, "carousel");
+        arm = hwMap.get(DcMotor.class, "collectArm");   //EH0
+        lift = hwMap.get(DcMotor.class, "lift");        //EH1
+        carousel = hwMap.get(DcMotor.class, "carousel");//EH2
 
-        cap = hwMap.get(Servo.class, "cap");
-        capArm = hwMap.get(Servo.class, "capArm");
-        deposit = hwMap.get(Servo.class, "deposit");
-        gate = hwMap.get(Servo.class, "gate");
-        collect = hwMap.get(CRServo.class, "collect");
+        collect = hwMap.get(CRServo.class, "collect");  //CH0
+        cap = hwMap.get(Servo.class, "cap");            //CH1
+        capArm = hwMap.get(Servo.class, "capArm");      //CH2
+        deposit = hwMap.get(Servo.class, "deposit");    //CH3
+        gate = hwMap.get(Servo.class, "gate");          //CH4
 
         //lookieLookie = hwMap.get(Servo.class, "lookieLookie");
 
@@ -125,7 +125,7 @@ public class FFHardwareMap
 
         //robot.init(hardwareMap);
 
-        cameraServo.setPosition(cameraServoCentered);
+        //cameraServo.setPosition(cameraServoCentered);
 
     }
 }
