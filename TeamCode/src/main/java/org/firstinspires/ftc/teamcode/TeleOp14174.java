@@ -32,7 +32,6 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
@@ -50,9 +49,9 @@ import com.qualcomm.robotcore.util.Range;
  * Remove or comment out the @Disabled line to add this opmode to the Driver Station OpMode list
  */
 
-@TeleOp(name="TestTeleOp", group="Linear Opmode")
+@TeleOp(name="TeleOp", group="Linear Opmode")
 //@Disabled
-public class Freight_Frenzy_Testing extends LinearOpMode {
+public class TeleOp14174 extends LinearOpMode {
 
     // Declare OpMode members.
     private ElapsedTime runtime = new ElapsedTime();
@@ -68,8 +67,6 @@ public class Freight_Frenzy_Testing extends LinearOpMode {
 
         double forward = 0;
         double turning = 0;
-        double lSpeed = 0;
-        double rSpeed = 0;
 
         //buttons
         boolean testMode = true;
@@ -80,10 +77,11 @@ public class Freight_Frenzy_Testing extends LinearOpMode {
         boolean dpadDownLS = false;
 
         boolean rightBumperLS = false;
-        boolean rightTriggerLS = false;
+        boolean leftTriggerLS = false;
 
         double liftTargetIndex = 0;
         boolean gateState = false; //false is closed true is open
+        boolean armTarget = false; //false is down true is up
 
         // Wait for the game to start (driver presses PLAY)
         waitForStart();
@@ -132,21 +130,69 @@ public class Freight_Frenzy_Testing extends LinearOpMode {
                     liftPowerControl(robot.liftBot);
                 }
 
+                //ARM
+                if (gamepad2.left_stick_y < -0.5) {
+                    armTarget = true;
+                } else if (gamepad2.left_stick_y > 0.5) {
+                    armTarget = false;
+                }
+
+                if (armTarget) {
+                    armPowerControl(robot.collectUp);
+                } else {
+                    armPowerControl(robot.collectDown);
+                }
+
             } else {
                 //ALTERNATE RUN MODE
                 telemetry.addData("RUN MODE: ", "ALTERNATE");
-                //LIFT
-                if (Math.abs(gamepad2.right_stick_y) > 0.05 /* && robot.lift.getCurrentPosition() >= robot.liftDown && robot.lift.getCurrentPosition() <= robot.liftUp */) {
-                    robot.arm.setPower(-gamepad2.right_stick_y);
-                } else {
-                    robot.arm.setPower(0);
-                }
 
-                //COLLECTION ARM
-                if (Math.abs(gamepad2.left_stick_y) > 0.05 /*&& robot.arm.getCurrentPosition() >= robot.collectDown && robot.arm.getCurrentPosition() <= robot.collectUp*/) {
-                    robot.lift.setPower(-gamepad2.left_stick_y);
+                //LIFT
+                if (driftCheck(gamepad2.left_stick_y)) {
+                    if (gamepad2.right_trigger > 0.1) {
+                        if (gamepad2.left_stick_y > 0 && robot.lift.getCurrentPosition() > -robot.liftUp) {
+                            robot.lift.setPower(0.5*gamepad2.left_stick_y);
+                        } else if (gamepad2.left_stick_y < 0 && robot.lift.getCurrentPosition() < robot.liftUp) {
+                            robot.lift.setPower(0.5*gamepad2.left_stick_y);
+                        } else {
+                            robot.lift.setPower(0);
+                        }
+                    } else {
+                        if (gamepad2.left_stick_y > 0 && robot.lift.getCurrentPosition() > -robot.liftUp) {
+                            robot.lift.setPower(gamepad2.left_stick_y);
+                        } else if (gamepad2.left_stick_y < 0 && robot.lift.getCurrentPosition() < robot.liftUp) {
+                            robot.lift.setPower(gamepad2.left_stick_y);
+                        } else {
+                            robot.lift.setPower(0);
+                            telemetry.addData("lift: ", "at limit");
+                        }
+                    }
                 } else {
                     robot.lift.setPower(0);
+                }
+
+
+                //COLLECTION ARM
+                if (driftCheck(gamepad2.right_stick_y)) {
+                    if (gamepad2.right_trigger > 0.1) {
+                        if (gamepad2.right_stick_y < 0 && robot.arm.getCurrentPosition() < robot.collectUp) { //UP
+                            robot.arm.setPower(-0.5*gamepad2.right_stick_y);
+                        } else if (gamepad2.right_stick_y > 0 && robot.arm.getCurrentPosition() > robot.collectDown) {
+                            robot.arm.setPower(-0.5*gamepad2.right_stick_y);
+                        } else {
+                            robot.arm.setPower(0);
+                        }
+                    } else {
+                        if (gamepad2.right_stick_y < 0 && robot.arm.getCurrentPosition() < robot.collectUp) { //UP
+                            robot.arm.setPower(-gamepad2.right_stick_y);
+                        } else if (gamepad2.right_stick_y > 0 && robot.arm.getCurrentPosition() > robot.collectDown) {
+                            robot.arm.setPower(-gamepad2.right_stick_y);
+                        } else {
+                            robot.arm.setPower(0);
+                        }
+                    }
+                } else {
+                    robot.arm.setPower(0);
                 }
             }
 
@@ -160,8 +206,8 @@ public class Freight_Frenzy_Testing extends LinearOpMode {
             }
 
             //CAP CLAW
-            if (gamepad2.right_trigger > 0.1 && !rightTriggerLS) {
-                rightTriggerLS = true;
+            if (gamepad2.left_trigger > 0.1 && !leftTriggerLS) {
+                leftTriggerLS = true;
                 if (gateState) {
                     robot.gate.setPosition(robot.gateOpen);
                     gateState = false;
@@ -169,13 +215,15 @@ public class Freight_Frenzy_Testing extends LinearOpMode {
                     robot.gate.setPosition(robot.gateClosed);
                     gateState = true;
                 }
-            } else if (gamepad2.right_trigger <= 0.1) {
-                rightTriggerLS = false;
+            } else if (gamepad2.left_trigger <= 0.1) {
+                leftTriggerLS = false;
             }
 
             //deposit
-            if (gamepad2.y) {
+            if (gamepad2.y) { //down
                 robot.deposit.setPosition(robot.depoDown);
+            } else if (gamepad2.x) {
+                robot.deposit.setPosition(robot.depoLevel);
             } else {
                 robot.deposit.setPosition(robot.depoUp);
             }
@@ -218,15 +266,13 @@ public class Freight_Frenzy_Testing extends LinearOpMode {
                 forward = -forward;
             }
 
-            lSpeed = Range.clip(forward + turning, -1, 1);
-            rSpeed = Range.clip(forward - turning, -1, 1);
-
-            setMotorSpeed(lSpeed, rSpeed);
+            setMotorSpeed(Range.clip(forward + turning, -1, 1), Range.clip(forward - turning, -1, 1));
 
             // Show the elapsed game time and wheel power.
             telemetry.addData("Status", "Run Time: " + runtime.toString());
             telemetry.addData("lift: ", robot.lift.getCurrentPosition());
             telemetry.addData("arm: ", robot.arm.getCurrentPosition());
+            telemetry.addData("liftPower", gamepad2.left_stick_y);
 
             telemetry.update();
         }
@@ -237,13 +283,20 @@ public class Freight_Frenzy_Testing extends LinearOpMode {
     }
 
     public boolean driftCheck(double stickVal) {
-        return stickVal > 0.05;
+        return (Math.abs(stickVal) > 0.05);
     }
 
     public void liftPowerControl(double target) {
         double distance = target - robot.lift.getCurrentPosition();
         double holdingPower = robot.lift.getCurrentPosition()/(robot.liftUp*6);
         double power = (distance/(robot.liftUp*5)) + holdingPower;
+
+        robot.lift.setPower(power);
+    }
+
+    public void armPowerControl(double target) {
+        double distance = target - robot.arm.getCurrentPosition();
+        double power = (distance/((robot.collectUp-robot.collectDown)*5));
 
         robot.lift.setPower(power);
     }
@@ -267,19 +320,19 @@ right trigger:          slow mode
 dpad left:              carousel left
 dpad right:             carousel right
 
-GAMEPAD 2:              NORMAL:             ALTERNATE:
-a:                                  collect
-b:                                  spit out
-x:
-y:                                  deposit
-left stick:             arm to pos          collection arm
-right stick:                                deposit lift
-left bumper:                     toggles alternate
+GAMEPAD 2:              NORMAL:             ALTERNATE:          Checked?
+a:                                  collect                         X
+b:                                  spit out                        X
+x:                               deposit level                      X
+y:                                  deposit                         X
+left stick:                                 deposit lift            X
+right stick:            arm to pos          collection arm
+left bumper:                     toggles alternate                  X
 right bumper:
-left trigger:
-right trigger:                      gate
-dpad up:                 lift to top
-dpad down:               lift to bottom
-dpad left:               lift to mid
-dpad right:
+left trigger:                       gate
+right trigger:                              slow button (slides and arm)    X
+dpad up:                 lift to top                                X
+dpad down:               lift to bottom                             X
+dpad right:              lift to mid                                X
+dpad left:
  */

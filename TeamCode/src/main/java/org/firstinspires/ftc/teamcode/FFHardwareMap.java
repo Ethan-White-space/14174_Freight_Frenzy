@@ -39,20 +39,19 @@ public class FFHardwareMap
     public final double[] cameraServoLimits = {0.17, 1};
     public final double cameraServoCentered = 0.5;
 
-    public final double depoUp = 0;
-    public final double depoDown = 0;
-    public final double capUp = 0;
-    public final double capDown = 0;
-    public final double liftUp = 0;
+    public final double depoUp = 0.223;
+    public final double depoLevel = 0.74;
+    public final double depoDown = 0.95;
+    public final double liftUp = 2000;
     public final double liftTop = 0;
     public final double liftMid = 0;
-    public final double liftDown = 0;
+    public final double liftBot = 150;
     public final double collectUp = 0;
-    public final double collectDown = 0;
-    public final double clawOpen = 0;
-    public final double clawClosed = 0;
+    public final double collectDown = -2500;
+    public final double gateOpen = 0.5;
+    public final double gateClosed = 0.94;
 
-    public final double carouselSpeed = 0;
+    public final double carouselSpeed = 1;
 
     /* local OpMode members. */
     HardwareMap hwMap =  null;
@@ -80,12 +79,8 @@ public class FFHardwareMap
         carousel = hwMap.get(DcMotor.class, "carousel");//EH2
 
         collect = hwMap.get(CRServo.class, "collect");  //CH0
-        cap = hwMap.get(Servo.class, "cap");            //CH1
-        capArm = hwMap.get(Servo.class, "capArm");      //CH2
         deposit = hwMap.get(Servo.class, "deposit");    //CH3
         gate = hwMap.get(Servo.class, "gate");          //CH4
-
-        //lookieLookie = hwMap.get(Servo.class, "lookieLookie");
 
         fr.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         fl.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -125,7 +120,8 @@ public class FFHardwareMap
 
         //robot.init(hardwareMap);
 
-        //cameraServo.setPosition(cameraServoCentered);
+        gate.setPosition(gateClosed);
+        deposit.setPosition(depoUp);
 
     }
 }

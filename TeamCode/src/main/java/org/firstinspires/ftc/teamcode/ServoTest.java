@@ -32,6 +32,8 @@ public class ServoTest extends LinearOpMode {
     private ElapsedTime runtime = new ElapsedTime();
     Servo Servo1;
     Servo Servo2;
+    Servo Servo3;
+    Servo Servo4;
     //CRServo CRServo1;
     //Servo kicker;
     //DcMotor Flywheel;
@@ -42,7 +44,9 @@ public class ServoTest extends LinearOpMode {
         telemetry.update();
 
         Servo1 = hardwareMap.servo.get("deposit");
-        //Servo2 = hardwareMap.servo.get("armOut");
+        Servo2 = hardwareMap.servo.get("capArm");
+        Servo3 = hardwareMap.servo.get("cap");
+        Servo4 = hardwareMap.servo.get("gate");
         //CRServo1 = hardwareMap.crservo.get("slide");
 
         //Servo1.setPosition(0.7);
@@ -68,6 +72,44 @@ public class ServoTest extends LinearOpMode {
                 telemetry.addData("Direction", Servo1.getDirection());
                 telemetry.update();
             }
+            if (gamepad1.x) {
+                Servo2.setPosition(Servo2.getPosition() + .0001);
+                telemetry.addData("Servo2 Position", Servo2.getPosition());
+                telemetry.addData("Direction", Servo2.getDirection());
+                telemetry.update();
+            }
+            if (gamepad1.y) {
+                Servo2.setPosition(Servo2.getPosition() - .0001);
+                telemetry.addData("Servo2 Position", Servo2.getPosition());
+                telemetry.addData("Direction", Servo2.getDirection());
+                telemetry.update();
+            }
+            if (gamepad1.dpad_up) {
+                Servo3.setPosition(Servo3.getPosition() + .0001);
+                telemetry.addData("Servo3 Position", Servo3.getPosition());
+                telemetry.addData("Direction", Servo3.getDirection());
+                telemetry.update();
+            }
+            if (gamepad1.dpad_down) {
+                Servo3.setPosition(Servo3.getPosition() - .0001);
+                telemetry.addData("Servo3 Position", Servo3.getPosition());
+                telemetry.addData("Direction", Servo3.getDirection());
+                telemetry.update();
+            }
+            if (gamepad1.dpad_left) {
+                Servo4.setPosition(Servo4.getPosition() + .0001);
+                telemetry.addData("Servo4 Position", Servo4.getPosition());
+                telemetry.addData("Direction", Servo4.getDirection());
+                telemetry.update();
+            }
+            if (gamepad1.dpad_right) {
+                Servo4.setPosition(Servo4.getPosition() - .0001);
+                telemetry.addData("Servo4 Position", Servo4.getPosition());
+                telemetry.addData("Direction", Servo4.getDirection());
+                telemetry.update();
+            }
+        }
+
 
             /*if(gamepad1.x) {
                 Servo2.setPosition(Servo2.getPosition() + .001);
@@ -93,4 +135,3 @@ public class ServoTest extends LinearOpMode {
              */
         }
     }
-}
