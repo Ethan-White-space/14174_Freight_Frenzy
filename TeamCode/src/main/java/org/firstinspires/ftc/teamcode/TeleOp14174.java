@@ -32,6 +32,7 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
@@ -64,6 +65,8 @@ public class TeleOp14174 extends LinearOpMode {
         telemetry.update();
 
         robot.init(hardwareMap);
+        robot.lift.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        robot.arm.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         double forward = 0;
         double turning = 0;
@@ -150,20 +153,20 @@ public class TeleOp14174 extends LinearOpMode {
                 //LIFT
                 if (driftCheck(gamepad2.left_stick_y)) {
                     if (gamepad2.right_trigger > 0.1) {
-                        if (gamepad2.left_stick_y > 0 && robot.lift.getCurrentPosition() > -robot.liftUp) {
+                        if (gamepad2.left_stick_y > 0 && robot.lift.getCurrentPosition() < robot.liftUp) {
                             robot.lift.setPower(0.5*gamepad2.left_stick_y);
-                        } else if (gamepad2.left_stick_y < 0 && robot.lift.getCurrentPosition() < robot.liftUp) {
+                        } else if (gamepad2.left_stick_y < 0 && robot.lift.getCurrentPosition() > -robot.liftUp) {
                             robot.lift.setPower(0.5*gamepad2.left_stick_y);
                         } else {
-                            robot.lift.setPower(0);
+                            robot.lift.setPower(robot.lift.getCurrentPosition()/(robot.liftUp*6));;
                         }
                     } else {
-                        if (gamepad2.left_stick_y > 0 && robot.lift.getCurrentPosition() > -robot.liftUp) {
+                        if (gamepad2.left_stick_y > 0 && robot.lift.getCurrentPosition() < robot.liftUp) {
                             robot.lift.setPower(gamepad2.left_stick_y);
-                        } else if (gamepad2.left_stick_y < 0 && robot.lift.getCurrentPosition() < robot.liftUp) {
+                        } else if (gamepad2.left_stick_y < 0 && robot.lift.getCurrentPosition() > -robot.liftUp) {
                             robot.lift.setPower(gamepad2.left_stick_y);
                         } else {
-                            robot.lift.setPower(0);
+                            robot.lift.setPower(robot.lift.getCurrentPosition()/(robot.liftUp*6));
                             telemetry.addData("lift: ", "at limit");
                         }
                     }
@@ -203,20 +206,6 @@ public class TeleOp14174 extends LinearOpMode {
                 robot.collect.setPower(-0.8);
             } else {
                 robot.collect.setPower(0);
-            }
-
-            //CAP CLAW
-            if (gamepad2.left_trigger > 0.1 && !leftTriggerLS) {
-                leftTriggerLS = true;
-                if (gateState) {
-                    robot.gate.setPosition(robot.gateOpen);
-                    gateState = false;
-                } else {
-                    robot.gate.setPosition(robot.gateClosed);
-                    gateState = true;
-                }
-            } else if (gamepad2.left_trigger <= 0.1) {
-                leftTriggerLS = false;
             }
 
             //deposit
@@ -329,7 +318,7 @@ left stick:                                 deposit lift            X
 right stick:            arm to pos          collection arm
 left bumper:                     toggles alternate                  X
 right bumper:
-left trigger:                       gate
+left trigger:
 right trigger:                              slow button (slides and arm)    X
 dpad up:                 lift to top                                X
 dpad down:               lift to bottom                             X

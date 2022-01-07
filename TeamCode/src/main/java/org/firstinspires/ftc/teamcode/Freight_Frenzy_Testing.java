@@ -51,7 +51,7 @@ import com.qualcomm.robotcore.util.Range;
  */
 
 @TeleOp(name="TestTeleOp", group="Linear Opmode")
-//@Disabled
+@Disabled
 public class Freight_Frenzy_Testing extends LinearOpMode {
 
     // Declare OpMode members.
@@ -65,6 +65,8 @@ public class Freight_Frenzy_Testing extends LinearOpMode {
         telemetry.update();
 
         robot.init(hardwareMap);
+        robot.lift.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        robot.arm.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         double forward = 0;
         double turning = 0;
@@ -159,6 +161,7 @@ public class Freight_Frenzy_Testing extends LinearOpMode {
                 robot.collect.setPower(0);
             }
 
+            /*
             //CAP CLAW
             if (gamepad2.right_trigger > 0.1 && !rightTriggerLS) {
                 rightTriggerLS = true;
@@ -172,6 +175,8 @@ public class Freight_Frenzy_Testing extends LinearOpMode {
             } else if (gamepad2.right_trigger <= 0.1) {
                 rightTriggerLS = false;
             }
+
+             */
 
             //deposit
             if (gamepad2.y) {

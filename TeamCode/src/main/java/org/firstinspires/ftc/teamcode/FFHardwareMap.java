@@ -23,35 +23,34 @@ public class FFHardwareMap
     public DcMotor carousel;
 
     //DEFINE SERVOS
-    public Servo cap;
-    public Servo capArm;
     public Servo deposit;
-    public Servo gate;
+    public Servo colCamPivot;
+    public Servo depoCamPivot;
     public CRServo collect;
-
-
-    public Servo cameraServo;
-
 
 
     //CONSTANTS
 
-    public final double[] cameraServoLimits = {0.17, 1};
-    public final double cameraServoCentered = 0.5;
+    public final double colCamStraightOut = 0.78;
+    public final double colCamSideways = 0.26;
+    public final double colCamLim[] = {0.16, 1};
+    public final double depoCamStraightOut = 0.26;
+    public final double depoCamDetectPos[] = {0, 0, 0, 0}; //Blue Warehouse, Blue Carousel, Red Warehouse, Red Carousel
+
 
     public final double depoUp = 0.223;
     public final double depoLevel = 0.74;
-    public final double depoDown = 0.95;
-    public final double liftUp = 2000;
-    public final double liftTop = 0;
-    public final double liftMid = 0;
-    public final double liftBot = 150;
+    public final double depoDown = 0.9;
+    public final double liftUp = 1900;
+    public final int liftTop = 1500;
+    public final int liftMid = 950;
+    public final int liftBot = 390;
     public final double collectUp = 0;
     public final double collectDown = -2500;
-    public final double gateOpen = 0.5;
-    public final double gateClosed = 0.94;
 
-    public final double carouselSpeed = 1;
+    public final double carouselSpeed = 0.75;
+
+    public final double minSpeed = 0.15;
 
     /* local OpMode members. */
     HardwareMap hwMap =  null;
@@ -80,7 +79,9 @@ public class FFHardwareMap
 
         collect = hwMap.get(CRServo.class, "collect");  //CH0
         deposit = hwMap.get(Servo.class, "deposit");    //CH3
-        gate = hwMap.get(Servo.class, "gate");          //CH4
+
+        colCamPivot = hwMap.get(Servo.class, "colCam"); //EH0
+        depoCamPivot = hwMap.get(Servo.class,"depoCam" );//EH2
 
         fr.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         fl.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -120,8 +121,8 @@ public class FFHardwareMap
 
         //robot.init(hardwareMap);
 
-        gate.setPosition(gateClosed);
         deposit.setPosition(depoUp);
+        colCamPivot.setPosition(colCamSideways);
 
     }
 }

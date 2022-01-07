@@ -45,13 +45,14 @@ import java.util.List;
 import java.util.Locale;
 
 import static org.firstinspires.ftc.robotcore.external.navigation.AngleUnit.DEGREES;
+import static org.firstinspires.ftc.robotcore.external.navigation.AngleUnit.normalizeDegrees;
 import static org.firstinspires.ftc.robotcore.external.navigation.AxesOrder.XYZ;
 import static org.firstinspires.ftc.robotcore.external.navigation.AxesOrder.XZY;
 import static org.firstinspires.ftc.robotcore.external.navigation.AxesReference.EXTRINSIC;
 
-@Autonomous(name= "Blue Warehouse Test", group="14174")
+@Autonomous(name= "Blue Warehouse", group="14174")
 @Disabled  //comment out this line before using
-public class FreightFrenzyAutoWarehouseTesting extends LinearOpMode {
+public class BlueWarehouse extends LinearOpMode {
     private ElapsedTime runtime = new ElapsedTime();
 
     //Declare Sensors
@@ -82,8 +83,6 @@ public class FreightFrenzyAutoWarehouseTesting extends LinearOpMode {
     //localization
     double[] position = {0, 0}; //x, y
     double[] lastEncoderVals = {0, 0}; //l, r
-
-    double[][] path1 = {{1000, 1000, 0.05, 0.5}, {-1000, 2000, 0.05, 0.5}}; //x, y, speedMin, speedMax
 
     private static float offsetX = 0f/8f;//changing this moves the three rects and the three circles left or right, range : (-2, 2) not inclusive
     private static float offsetY = 0f/8f;//changing this moves the three rects and circles up or down, range: (-4, 4) not inclusive
@@ -207,98 +206,6 @@ public class FreightFrenzyAutoWarehouseTesting extends LinearOpMode {
     }
 
     //Navigation Functions
-    /*
-    public void navigateForward(double[][] targets, double timeOut) {
-        double distance = 0;
-        double speed = Math.cbrt(0.01*distance);
-        double heading = getAbsoluteHeading();
-
-        double[] robotOriginXY = {targets[0][0] - position[0], targets[0][1] - position[1]};
-        double[] pointVector = {Math.sqrt((robotOriginXY[0]*robotOriginXY[0]) + (robotOriginXY[1]*robotOriginXY[1])), -Math.atan2(robotOriginXY[0], robotOriginXY[1])}; //mag, angle
-        double[] localTargetXY = {pointVector[0]*Math.sin(pointVector[1]-heading), pointVector[0]*Math.cos(pointVector[1]-heading)}; //x, y
-        double headingError = AngleUnit.normalizeDegrees(pointVector[1] - heading);
-        double timeoutTime = getRuntime() + timeOut;
-
-        double minSpeed = targets[0][2];
-        double maxSpeed = targets[0][3];
-
-        double tPower = 0;
-        double rPower = 0;
-
-        for (int i = 0; i < targets.length; i++) {
-            robotOriginXY[0] = targets[i][0] - position[0];
-            robotOriginXY[1] = targets[i][1] - position[1];
-            pointVector[0] = Math.sqrt((robotOriginXY[0]*robotOriginXY[0]) + (robotOriginXY[1]*robotOriginXY[1]));
-            pointVector[1] = AngleUnit.normalizeDegrees(Math.toDegrees(Math.atan2(robotOriginXY[1], robotOriginXY[0]))-90);
-            if (pointVector[1] == Double.NaN) {
-                if (robotOriginXY[0] >= 0) {pointVector[1] = 90;}
-                else {pointVector[1] = -90;}
-            }
-            localTargetXY[0] = pointVector[0]*Math.sin(Math.toRadians(pointVector[1]-heading));
-            localTargetXY[1] = pointVector[0]*Math.cos(Math.toRadians(pointVector[1]-heading));
-            distance = pointVector[0];
-            minSpeed = targets[i][2];
-            maxSpeed = targets[i][3];
-            tPower = Range.clip((maxSpeed-minSpeed)*(Math.pow(0.01*localTargetXY[1], 1/3))+minSpeed, minSpeed, maxSpeed);
-
-            headingError = AngleUnit.normalizeDegrees(pointVector[1] - heading);
-            if (headingError >= 0) {
-                rPower = 0.2*(1-tPower)*Range.clip(Math.pow(0.1*Math.abs(headingError), 1/1.8) ,-1,1);
-            } else {
-                rPower = 0.2*(1-tPower)*Range.clip(-Math.pow(0.1*Math.abs(headingError), 1/1.8) ,-1,1);
-            }
-
-            while (distance > 30 && getRuntime() < timeoutTime && whileChecks()) {
-                heading = getAbsoluteHeading();
-                robotOriginXY[0] = targets[i][0] - position[0];
-                robotOriginXY[1] = targets[i][1] - position[1];
-                pointVector[0] = Math.sqrt((robotOriginXY[0]*robotOriginXY[0]) + (robotOriginXY[1]*robotOriginXY[1]));
-                pointVector[1] = AngleUnit.normalizeDegrees(Math.toDegrees(Math.atan2(robotOriginXY[1], robotOriginXY[0]))-90);
-                if (pointVector[1] == Double.NaN) {
-                    if (robotOriginXY[0] >= 0) {pointVector[1] = 90;}
-                    else {pointVector[1] = -90;}
-                }
-                localTargetXY[0] = pointVector[0]*Math.sin(Math.toRadians(pointVector[1]-heading));
-                localTargetXY[1] = pointVector[0]*Math.cos(Math.toRadians(pointVector[1]-heading));
-                distance = pointVector[0];
-                minSpeed = targets[i][2];
-                maxSpeed = targets[i][3];
-                tPower = Range.clip((maxSpeed-minSpeed)*(Math.pow(0.01*localTargetXY[1], 1/3))+minSpeed, minSpeed, maxSpeed);
-
-                headingError = AngleUnit.normalizeDegrees(pointVector[1] - heading);
-                if (headingError >= 0) {
-                    rPower = 0.6*(1-tPower)*Range.clip(Math.pow(0.1*Math.abs(headingError), 1/1.8) ,-1,1);
-                } else {
-                    rPower = 0.6*(1-tPower)*Range.clip(-Math.pow(0.1*Math.abs(headingError), 1/1.8) ,-1,1);
-                }
-
-                telemetry.addData("bl: ", robot.bl.getCurrentPosition());
-                telemetry.addData("fr: ", robot.fr.getCurrentPosition());
-                telemetry.addData("x: ", position[0]);
-                telemetry.addData("y: ", position[1]);
-                telemetry.addData("rox: ", robotOriginXY[0]);
-                telemetry.addData("roy: ", robotOriginXY[1]);
-                telemetry.addData("vectMag: ", pointVector[0]);
-                telemetry.addData("vectAng: ", pointVector[1]);
-                telemetry.addData("lox: ", localTargetXY[0]);
-                telemetry.addData("loy: ", localTargetXY[1]);
-                telemetry.addData("distance: ", distance);
-                telemetry.addData("heading: ", getAbsoluteHeading());
-                telemetry.addData("headingE: ", headingError);
-                telemetry.addData("power: ", tPower);
-                telemetry.addData("rotation: ", rPower);
-                telemetry.update();
-
-                setMotorSpeed(tPower-rPower, tPower+rPower);
-                localize();
-            }
-
-            i++;
-        }
-        setMotorSpeed(0, 0);
-    }
-     */
-
     public void driveStraight (double duration, double speedPercent, double error, double time) {
         double position = robot.fr.getCurrentPosition();
         double target = position + duration;
@@ -345,15 +252,15 @@ public class FreightFrenzyAutoWarehouseTesting extends LinearOpMode {
     };
 
     public void turn (double target, double speedPercent, double error) {
-        double DaS = Math.abs(target - getAbsoluteHeading());
-        double distance = target - getAbsoluteHeading();
+        double DaS = Math.abs(AngleUnit.normalizeDegrees(target - getAbsoluteHeading()));
+        double distance = AngleUnit.normalizeDegrees(target - getAbsoluteHeading());
         double percent = distance/DaS;
 
         double speed = 0;
         double[] wheelSpeed = new double[4]; //fl, fr, bl, br
 
         while (Math.abs(distance) > error && !isStopRequested()) {
-            distance = target - getAbsoluteHeading();
+            distance = AngleUnit.normalizeDegrees(target - getAbsoluteHeading());
             percent = distance/DaS;
 
             speed = speedPercent*(0.9*(Math.cbrt(percent)));
@@ -366,22 +273,20 @@ public class FreightFrenzyAutoWarehouseTesting extends LinearOpMode {
         }
         wheelSpeed[0] = 0;
         wheelSpeed[1] = 0;
-        wheelSpeed[2] = 0;
-        wheelSpeed[3] = 0;
 
         setMotorSpeed(wheelSpeed[0], wheelSpeed[1]);
     };
 
     public void arcTurn (double target, double speedPercent, double error, char side) {
-        double DaS = Math.abs(target - getAbsoluteHeading());
-        double distance = target - getAbsoluteHeading();
+        double DaS = Math.abs(AngleUnit.normalizeDegrees(target - getAbsoluteHeading()));
+        double distance = AngleUnit.normalizeDegrees(target - getAbsoluteHeading());
         double percent = distance/DaS;
 
         double speed = 0;
         double[] wheelSpeed = new double[4]; //fl, fr, bl, br
 
         while (Math.abs(distance) > error && !isStopRequested()) {
-            distance = target - getAbsoluteHeading();
+            distance = AngleUnit.normalizeDegrees(target - getAbsoluteHeading());
             percent = distance/DaS;
 
             speed = speedPercent*(0.9*(Math.cbrt(percent)));
@@ -550,16 +455,6 @@ public class FreightFrenzyAutoWarehouseTesting extends LinearOpMode {
 
     private double getRelativeHeading(){
         return this.getAbsoluteHeading() - this.headingResetValue;
-    }
-
-    public double angleWrap(double radians) {
-        while (radians > Math.PI) {
-            radians -= 2*Math.PI;
-        }
-        while (radians < -Math.PI) {
-            radians += 2*Math.PI;
-        }
-        return radians;
     }
 
     public void composeTelemetry() {

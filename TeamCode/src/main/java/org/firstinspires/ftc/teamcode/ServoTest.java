@@ -43,17 +43,17 @@ public class ServoTest extends LinearOpMode {
         telemetry.addData("Status", "Initialized");
         telemetry.update();
 
-        Servo1 = hardwareMap.servo.get("deposit");
-        Servo2 = hardwareMap.servo.get("capArm");
-        Servo3 = hardwareMap.servo.get("cap");
-        Servo4 = hardwareMap.servo.get("gate");
+        Servo1 = hardwareMap.servo.get("colCam");
+        Servo2 = hardwareMap.servo.get("depoCam");
+        //Servo3 = hardwareMap.servo.get("cap");
+        //Servo4 = hardwareMap.servo.get("gate");
         //CRServo1 = hardwareMap.crservo.get("slide");
 
         //Servo1.setPosition(0.7);
         // Wait for the game to start (driver presses PLAY)
         waitForStart();
         runtime.reset();
-        //Servo2.setDirection(Servo.Direction.FORWARD);
+        Servo2.setDirection(Servo.Direction.FORWARD);
         Servo1.setDirection(Servo.Direction.FORWARD);
         //Servo1.setPosition(0.5);
 
@@ -84,6 +84,7 @@ public class ServoTest extends LinearOpMode {
                 telemetry.addData("Direction", Servo2.getDirection());
                 telemetry.update();
             }
+            /*
             if (gamepad1.dpad_up) {
                 Servo3.setPosition(Servo3.getPosition() + .0001);
                 telemetry.addData("Servo3 Position", Servo3.getPosition());
@@ -108,6 +109,8 @@ public class ServoTest extends LinearOpMode {
                 telemetry.addData("Direction", Servo4.getDirection());
                 telemetry.update();
             }
+
+             */
         }
 
 

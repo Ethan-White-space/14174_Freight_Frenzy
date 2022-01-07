@@ -4,6 +4,7 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.hardware.bosch.JustLoggingAccelerationIntegrator;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
@@ -45,9 +46,14 @@ import static org.firstinspires.ftc.robotcore.external.navigation.AxesOrder.XYZ;
 import static org.firstinspires.ftc.robotcore.external.navigation.AxesOrder.XZY;
 import static org.firstinspires.ftc.robotcore.external.navigation.AxesReference.EXTRINSIC;
 
-@Autonomous(name= "Blue Carousel", group="14174")
-//@Disabled  //comment out this line before using
+@Autonomous(name= "Blue Carousel Test", group="14174")
+@Disabled  //comment out this line before using
 public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
+    @Override
+    public void runOpMode() throws InterruptedException {
+
+    }
+    /*
     private ElapsedTime runtime = new ElapsedTime();
 
     //Declare Sensors
@@ -127,7 +133,7 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
             }
         });
 
-         */
+
 
         //ADDITIONAL VUFORIA INITIALIZATION
         VuforiaLocalizer.Parameters parameters = new VuforiaLocalizer.Parameters(cameraMonitorViewId);
@@ -206,7 +212,7 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
                 tfod.activate();
             }
 
-             */
+
             while(getRuntime()<10 && whileChecks()) {
                 List<Recognition> updatedRecognitions = tfod.getRecognitions();
                 if (updatedRecognitions != null) {
@@ -425,15 +431,16 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
             Imgproc.drawContours(contoursOnFrameMat, contoursList, -1, new Scalar(0, 0, 255), 3, 8);
 
             return contoursOnFrameMat;
-             */
+            */
 
-            return yCbCrChan2Mat;
-        }
+            //return yCbCrChan2Mat;
+        //}
 
-        public int getNumContoursFound()
-        {
-            return numContoursFound;
-        }
+        //public int getNumContoursFound()
+        //{
+        //    return numContoursFound;
+        //}
+        /*
     }
 
     private void initTfod() {
@@ -536,4 +543,5 @@ public class FreightFrenzyAutoCarouselTesting extends LinearOpMode {
                     }
                 });
     }
+    */
 }
