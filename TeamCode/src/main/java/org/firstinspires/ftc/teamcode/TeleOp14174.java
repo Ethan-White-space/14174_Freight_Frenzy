@@ -158,7 +158,7 @@ public class TeleOp14174 extends LinearOpMode {
                         } else if (gamepad2.left_stick_y < 0 && robot.lift.getCurrentPosition() > -robot.liftUp) {
                             robot.lift.setPower(0.5*gamepad2.left_stick_y);
                         } else {
-                            robot.lift.setPower(robot.lift.getCurrentPosition()/(robot.liftUp*6));;
+                            robot.lift.setPower(robot.lift.getCurrentPosition()/(robot.liftUp*5));;
                         }
                     } else {
                         if (gamepad2.left_stick_y > 0 && robot.lift.getCurrentPosition() < robot.liftUp) {
@@ -166,7 +166,7 @@ public class TeleOp14174 extends LinearOpMode {
                         } else if (gamepad2.left_stick_y < 0 && robot.lift.getCurrentPosition() > -robot.liftUp) {
                             robot.lift.setPower(gamepad2.left_stick_y);
                         } else {
-                            robot.lift.setPower(robot.lift.getCurrentPosition()/(robot.liftUp*6));
+                            robot.lift.setPower(robot.lift.getCurrentPosition()/(robot.liftUp*5));
                             telemetry.addData("lift: ", "at limit");
                         }
                     }

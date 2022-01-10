@@ -1,18 +1,18 @@
 
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.hardware.bosch.BNO055IMU;
+import com.qualcomm.hardware.bosch.JustLoggingAccelerationIntegrator;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.util.ElapsedTime;
-
-import com.qualcomm.hardware.bosch.BNO055IMU;
-import com.qualcomm.hardware.bosch.JustLoggingAccelerationIntegrator;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcore.external.ClassFactory;
 import org.firstinspires.ftc.robotcore.external.Func;
+import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.matrices.OpenGLMatrix;
 import org.firstinspires.ftc.robotcore.external.matrices.VectorF;
 import org.firstinspires.ftc.robotcore.external.navigation.Acceleration;
@@ -20,12 +20,12 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
 import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
-//import org.firstinspires.ftc.robotcore.external.navigation.RelicRecoveryVuMark; <- this is why I need to go through imports
-import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocalizer;
 import org.firstinspires.ftc.robotcore.external.navigation.VuforiaTrackable;
 import org.firstinspires.ftc.robotcore.external.navigation.VuforiaTrackableDefaultListener;
 import org.firstinspires.ftc.robotcore.external.navigation.VuforiaTrackables;
+import org.firstinspires.ftc.robotcore.external.tfod.Recognition;
+import org.firstinspires.ftc.robotcore.external.tfod.TFObjectDetector;
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
@@ -38,21 +38,18 @@ import org.openftc.easyopencv.OpenCvCameraRotation;
 import org.openftc.easyopencv.OpenCvPipeline;
 import org.openftc.easyopencv.OpenCvWebcam;
 
-//import org.firstinspires.ftc.teamcode.FFHardwareMap;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
 import static org.firstinspires.ftc.robotcore.external.navigation.AngleUnit.DEGREES;
-import static org.firstinspires.ftc.robotcore.external.navigation.AngleUnit.normalizeDegrees;
 import static org.firstinspires.ftc.robotcore.external.navigation.AxesOrder.XYZ;
 import static org.firstinspires.ftc.robotcore.external.navigation.AxesOrder.XZY;
 import static org.firstinspires.ftc.robotcore.external.navigation.AxesReference.EXTRINSIC;
 
-@Autonomous(name= "Blue Warehouse", group="14174")
-@Disabled  //comment out this line before using
-public class BlueWarehouse extends LinearOpMode {
+@Autonomous(name= "Red Carousel", group="14174")
+//@Disabled  //comment out this line before using
+public class RedCarousel extends LinearOpMode {
     private ElapsedTime runtime = new ElapsedTime();
 
     //Declare Sensors
@@ -63,17 +60,20 @@ public class BlueWarehouse extends LinearOpMode {
     OpenCvWebcam depositcam; //EOCV Depo Cam
     WebcamName collectCam;   //Vuforia Collect Cam
 
+    private static final String TFOD_MODEL_ASSET = "FreightFrenzy_DM.tflite";
+    private static final String[] LABELS = {
+            "Duck",
+            "Marker"
+    };
+
     private static final float mmPerInch        = 25.4f;
     private static final float mmTargetHeight   = 6 * mmPerInch;          // the height of the center of the target image above the floor
     private static final float halfField        = 72 * mmPerInch;
     private static final float halfTile         = 12 * mmPerInch;
     private static final float oneAndHalfTile   = 36 * mmPerInch;
 
-    private OpenGLMatrix lastLocation = null;
     private VuforiaLocalizer vuforia  = null;
-    private VuforiaTrackables targets = null ;
-
-    private boolean targetVisible = false;
+    private TFObjectDetector tfod;
 
     FFHardwareMap robot = new FFHardwareMap();
 
@@ -87,27 +87,31 @@ public class BlueWarehouse extends LinearOpMode {
     private static float offsetX = 0f/8f;//changing this moves the three rects and the three circles left or right, range : (-2, 2) not inclusive
     private static float offsetY = 0f/8f;//changing this moves the three rects and circles up or down, range: (-4, 4) not inclusive
 
-    private static float[] midPos = {4f/8f+offsetX, 4f/8f+offsetY};//0 = col, 1 = row
-    private static float[] leftPos = {2f/8f+offsetX, 4f/8f+offsetY};
+    private static float[] midPos = {2f/8f+offsetX, 4f/8f+offsetY};//0 = col, 1 = row
     private static float[] rightPos = {6f/8f+offsetX, 4f/8f+offsetY};
 
     public int valRight;
     public int valMid;
-    public int valLeft;
 
-    public char pathDir;
+    char pathDir;
+
+    double scanDirection = -1;
+
+    private int shippingElementPlacement = -1; //-1 is pre-detection; 0: left-bottom; 1: mid-mid; 2: right-top
 
     @Override
     public void runOpMode() throws InterruptedException {
 
         //EASY OPEN CV INITIALIZATION
         int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
-        depositcam = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "depositCam"), cameraMonitorViewId);
+        int[] viewportContainerIds = OpenCvCameraFactory.getInstance().splitLayoutForMultipleViewports(cameraMonitorViewId, 2, OpenCvCameraFactory.ViewportSplitMethod.VERTICALLY);
+        depositcam = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "depositCam"), viewportContainerIds[1]);
         collectCam = hardwareMap.get(WebcamName.class, "collectCam");
 
         depositcam.setPipeline(new shippingElementDetection());
 
         depositcam.setMillisecondsPermissionTimeout(2500); // Timeout for obtaining permission is configurable. Set before opening.
+
         depositcam.openCameraDeviceAsync(new OpenCvCamera.AsyncCameraOpenListener()
         {
             @Override
@@ -124,32 +128,24 @@ public class BlueWarehouse extends LinearOpMode {
         });
 
         //ADDITIONAL VUFORIA INITIALIZATION
-        VuforiaLocalizer.Parameters parameters = new VuforiaLocalizer.Parameters(cameraMonitorViewId);
+        VuforiaLocalizer.Parameters parameters = new VuforiaLocalizer.Parameters(viewportContainerIds[0]);
         parameters.vuforiaLicenseKey = "AQdreXP/////AAABmZt6Oecz+kEzpK0JGPmBsiNN7l/NAvoL0zpZPFQAslTHUcNYg++t82d9o6emZcSfRJM36o491JUmYS/5qdxxP235BssGslVIMSJCT7vNZ2iQW2pwj6Lxtw/oqvCLtgGRPxUyVSC1u5QHi+Siktg3e4g9rYzoQ2+kzv2chS8TnNooSoF6YgQh4FXqCYRizfbYkjVWtx/DtIigXy+TrXNn84yXbl66CnjNy2LFaOdBFrl315+A79dEYJ+Pl0b75dzncQcrt/aulSBllkA4f03FxeN3Ck1cx9twVFatjOCFxPok0OApMyo1kcARcPpemk1mqF2yf2zJORZxF0H+PcRkS2Sv92UpSEq/9v+dYpruj/Vr";
         parameters.cameraName = collectCam;
-        parameters.useExtendedTracking = false;
-        vuforia = ClassFactory.getInstance().createVuforia(parameters);
-        targets = this.vuforia.loadTrackablesFromAsset("FreightFrenzy");
-        List<VuforiaTrackable> allTrackables = new ArrayList<VuforiaTrackable>();
-        allTrackables.addAll(targets);
+        //vuforia = ClassFactory.getInstance().createVuforia(parameters);
 
-        identifyTarget(0, "Blue Storage",       -halfField,  oneAndHalfTile, mmTargetHeight, 90, 0, 90);
-        identifyTarget(1, "Blue Alliance Wall",  halfTile,   halfField,      mmTargetHeight, 90, 0, 0);
-        identifyTarget(2, "Red Storage",        -halfField, -oneAndHalfTile, mmTargetHeight, 90, 0, 90);
-        identifyTarget(3, "Red Alliance Wall",   halfTile,  -halfField,      mmTargetHeight, 90, 0, 180);
+        //initTfod();
 
-        final float CAMERA_FORWARD_DISPLACEMENT  = 0.0f * mmPerInch;   // eg: Enter the forward distance from the center of the robot to the camera lens
-        final float CAMERA_VERTICAL_DISPLACEMENT = 6.0f * mmPerInch;   // eg: Camera is 6 Inches above ground
-        final float CAMERA_LEFT_DISPLACEMENT     = 0.0f * mmPerInch;   // eg: Enter the left distance from the center of the robot to the camera lens
-
-        OpenGLMatrix cameraLocationOnRobot = OpenGLMatrix
-                .translation(CAMERA_FORWARD_DISPLACEMENT, CAMERA_LEFT_DISPLACEMENT, CAMERA_VERTICAL_DISPLACEMENT)
-                .multiplied(Orientation.getRotationMatrix(EXTRINSIC, XZY, DEGREES, 90, 90, 0));
-
-        /**  Let all the trackable listeners know where the camera is.  */
-        for (VuforiaTrackable trackable : allTrackables) {
-            ((VuforiaTrackableDefaultListener) trackable.getListener()).setCameraLocationOnRobot(parameters.cameraName, cameraLocationOnRobot);
-        }
+        //if (tfod != null) {
+        //tfod.activate();
+        //telemetry.addData("Tfod: ", "Activated");
+        // The TensorFlow software will scale the input images from the camera to a lower resolution.
+        // This can result in lower detection accuracy at longer distances (> 55cm or 22").
+        // If your target is at distance greater than 50 cm (20") you can adjust the magnification value
+        // to artificially zoom in to the center of image.  For best results, the "aspectRatio" argument
+        // should be set to the value of the images used to create the TensorFlow Object Detection model
+        // (typically 16/9).
+        //tfod.setZoom(1, 16.0/9.0);
+        //}
 
         //CODE FOR SETTING UP AND INITIALIZING IMU
         BNO055IMU.Parameters parameters2 = new BNO055IMU.Parameters();
@@ -168,8 +164,9 @@ public class BlueWarehouse extends LinearOpMode {
 
         //Setup The Telemetry Dashboard
         composeTelemetry();
-
         //Initilization
+
+        robot.depoCamPivot.setPosition(robot.depoCamDetectPos[3]);
 
         // Wait for the game to start (driver presses PLAY)
         this.headingResetValue = this.getAbsoluteHeading();
@@ -178,12 +175,13 @@ public class BlueWarehouse extends LinearOpMode {
         telemetry.addData("Status", "Initialized");
         telemetry.update();
         while (!opModeIsActive() && !isStopRequested()) {
+            telemetry.addData("valMid: ", valMid);
+            telemetry.addData("valRight: ", valRight);
             telemetry.addData("Status:", "Waiting for start command.");
             telemetry.update();
         };
 
         runtime.reset();
-        targets.activate();
 
         //AUTONOMOUS
         while (opModeIsActive()) {
@@ -195,25 +193,185 @@ public class BlueWarehouse extends LinearOpMode {
             } else if (valMid < 80){
                 telemetry.addData("position:", "Mid");
                 robot.lift.setTargetPosition(robot.liftMid);
-                pathDir = 'r';
+                pathDir = 'l';
             } else {
                 telemetry.addData("position:", "Left");
                 robot.lift.setTargetPosition(robot.liftBot);
                 pathDir = 'r';
             }
 
-            telemetry.addData("valMid: ", valMid);
             telemetry.addData("valRight: ", valRight);
+            telemetry.addData("valMid: ", valMid);
 
             depositcam.closeCameraDevice();
 
-            //OpenGLMatrix vuLocation = readVuforiaPosition(allTrackables);
+            if (pathDir == 'r') { //This goes straight to the hub
+                driveStraight(1600, 0.7, 10, 4); //drives straight ahead
+                robot.lift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                robot.lift.setPower(0.8);
+                sleep(50);
+                arcTurn(-45, 0.7, 1, 'r'); //turns toward the hub
+                sleep(50);
+                robot.deposit.setPosition(robot.depoDownAuto);
+                sleep(500);
+                driveStraight(400, 0.5, 10, 2);
+                sleep(100);
+                driveStraight(-1300, 0.9, 10, 4); //Backs away from the hub
+                robot.deposit.setPosition(robot.depoUp);
+                robot.lift.setTargetPosition(0);
+                sleep(50);
+                arcTurn(-90, 0.7, 1, 'l'); //turns to be parallel to the red wall
+                robot.lift.setPower(0);
+                sleep(50);
+                driveStraight(-1450, 0.8, 10, 4); //backs to the carousel
+                sleep(50);
+                turn(0, 0.5, 1); //turns to face the hub to hit it at a glacing angle
+                sleep(50);
+                driveStraight(-950, 0.6, 10, 3); //backs to the hub
+                sleep(50);
+                robot.carousel.setPower(-0.5);
+                sleep(3000);
+                robot.carousel.setPower(0);
+                sleep(50);
+                driveStraight(1925, 0.8, 10, 3); //drives into storage
+                sleep(50);
 
+            } else { //this goes around the two shipping element spots closest to the hub
+                arcTurn(40, 1, 1, 'l'); //turns to go around the barcode
+                sleep(50);
+                driveStraight(2500, 1, 10, 6); //drives past the bar code
+                sleep(50);
+                robot.lift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                robot.lift.setPower(0.8);
+                arcTurn(-90, 1, 1, 'r'); //turns toward the hub
+                sleep(50);
+                robot.deposit.setPosition(robot.depoDownAuto);
+                driveStraight(1100, 1, 10, 4); //drives to the hub
+                sleep(50);
+                driveStraight(-1725, 1, 10, 4); //backs away from the hub
+                robot.lift.setTargetPosition(0);
+                robot.deposit.setPosition(robot.depoUp);
+                sleep(50);
+                arcTurn(0, 1, 1, 'r'); //turns to face the wheel to the carousel
+                sleep(50);
+                driveStraight(-1850, 1, 10, 4); //back to the carousel
+                sleep(50);
+                arcTurn(20, 0.6, 1, 'r'); //arc turn into the carousel
+                sleep(50);
+                robot.carousel.setPower(-0.5);
+                sleep(3000);
+                robot.carousel.setPower(0);
+                arcTurn(0, 0.6, 1, 'r'); //arc turn toward storage
+                sleep(50);
+                driveStraight(1400, 0.7, 10, 3); //drive into storage
+                sleep(50);
+
+            }
+
+
+
+            /*
+            if(getRuntime() > 20 && !EOCVstopped) {
+                depositcam.closeCameraDevice();
+                tfod.activate();
+            }
+
+            while(getRuntime()<10 && whileChecks()) {
+                List<Recognition> updatedRecognitions = tfod.getRecognitions();
+                if (updatedRecognitions != null) {
+                    telemetry.addData("# Object Detected", updatedRecognitions.size());
+
+                    // step through the list of recognitions and display boundary info.
+                    int i = 0;
+                    for (Recognition recognition : updatedRecognitions) {
+                        telemetry.addData(String.format("label (%d)", i), recognition.getLabel());
+                        telemetry.addData(String.format("  left,top (%d)", i), "%.03f , %.03f",
+                                recognition.getLeft(), recognition.getTop());
+                        telemetry.addData(String.format("  right,bottom (%d)", i), "%.03f , %.03f",
+                                recognition.getRight(), recognition.getBottom());
+                        i++;
+                    }
+                }
+                telemetry.addData("runtime: ", getRuntime());
+                telemetry.update();
+            }
+
+            duckyDrive();
+            sleep(1000);
+             */
             stop();
         }
     }
 
-    //Navigation Functions
+    public void duckyDrive () {
+        boolean turnFinished = false;
+        while (!turnFinished && whileChecks()) {
+            double relAng = duckyRelAngle();
+            if (relAng == 404) {
+                duckyScan();
+            } else if (Math.abs(relAng)>5){
+                double turnSpeed = 0;
+                if(relAng > 0) {turnSpeed = 0.2;}
+                else {turnSpeed = -0.2;}
+                setMotorSpeed(turnSpeed, -turnSpeed);
+            } else {
+                setMotorSpeed(0, 0);
+                turnFinished = true;
+            }
+        }
+        driveStraight(700, 0.4, 40, 8);
+    }
+
+    public double duckyRelAngle () {
+        int index = -1;
+        List<Recognition> updatedRecognitions = tfod.getRecognitions();
+        if (updatedRecognitions != null) {
+            telemetry.addData("# Object Detected", updatedRecognitions.size());
+            for (int i = 0; i < updatedRecognitions.size(); i++) {
+                if (updatedRecognitions.get(i).getLabel() == "Duck") {
+                    index = i;
+                }
+            }
+        }
+        if (index == -1) {
+            duckyScan();
+            return 404;
+        } else {
+            double centerPix = (updatedRecognitions.get(index).getLeft() + updatedRecognitions.get(index).getRight())/2;
+            double offset = centerPix - 275;
+            robot.colCamPivot.setPosition(Range.clip(robot.colCamPivot.getPosition() + (offset/160000), 0, 1));
+            return (robot.colCamPivot.getPosition()*190)-95;
+        }
+    }
+
+    public void duckyScan() {
+        int index = -1;
+        List<Recognition> updatedRecognitions = tfod.getRecognitions();
+        if (updatedRecognitions != null) {
+            telemetry.addData("# Object Detected", updatedRecognitions.size());
+            for (int i = 0; i < updatedRecognitions.size(); i++) {
+                if (updatedRecognitions.get(i).getLabel() == "Duck") {
+                    index = i;
+                }
+            }
+        }
+        if (index == -1) {
+            if(robot.colCamPivot.getPosition() < 0.05 || robot.colCamPivot.getPosition() > 0.95) {
+                scanDirection = scanDirection * -1;
+            }
+            robot.colCamPivot.setPosition(robot.colCamPivot.getPosition() + 0.0002*scanDirection);
+        } else {
+            return;
+        }
+    }
+
+    public void localizedDrive(double xTarget, double yTarget, double speedPercent, double error, double time) {
+        double desiredHeading = Math.atan2(yTarget-position[1], xTarget-position[0]);
+        turnTest(desiredHeading, speedPercent);
+        sleep(100);
+        driveStraight(Math.sqrt(((xTarget-position[0])*(xTarget-position[0]))+((yTarget-position[1])*(yTarget-position[1]))), speedPercent, error, time);
+    }
+
     public void driveStraight (double duration, double speedPercent, double error, double time) {
         double position = robot.fr.getCurrentPosition();
         double target = position + duration;
@@ -226,19 +384,19 @@ public class BlueWarehouse extends LinearOpMode {
         double turnSpeed = ((heading - getAbsoluteHeading())/20);
         double startTime = getRuntime();
 
-        while (Math.abs(distanceToTarget) > error && whileChecks() && getRuntime() < startTime + time) {
+        while (Math.abs(distanceToTarget) > error && !isStopRequested() && getRuntime() < startTime + time) {
             position = robot.fr.getCurrentPosition();
             distanceToTarget = target - position;
             percentToTarget = distanceToTarget/distanceToTargetStart;
             if (percentToTarget >= 0) {
                 speed = ((-((percentToTarget-1)*(percentToTarget-1)*(percentToTarget-1)*(percentToTarget-1))+1)*speedPercent)*0.9;
-                if (Math.abs(speed) < 0.05) {speed = 0.05;}
+                if (Math.abs(speed) < robot.minSpeed) {speed = robot.minSpeed;}
             }else if (percentToTarget < 0) {
                 speed = -((-((percentToTarget+1)*(percentToTarget+1)*(percentToTarget+1)*(percentToTarget+1))+1)*speedPercent)*0.9;
-                if (Math.abs(speed) < 0.05) {speed = -0.05;}
+                if (Math.abs(speed) < robot.minSpeed) {speed = -robot.minSpeed;}
             }
 
-            turnSpeed = -((heading - getAbsoluteHeading())/40);
+            turnSpeed = -((heading - getAbsoluteHeading())/20);
 
             telemetry.addData("DaS:", distanceToTargetStart);
             telemetry.addData("Target:", target);
@@ -249,8 +407,8 @@ public class BlueWarehouse extends LinearOpMode {
             telemetry.addData("Turn Speed:", turnSpeed);
             telemetry.update();
 
-            wheelSpeed[0] = Range.clip(speed, -0.9, 0.9) + Range.clip(turnSpeed, -0.1, 0.1);
-            wheelSpeed[1] = Range.clip(speed, -0.9, 0.9) - Range.clip(turnSpeed, -0.1, 0.1);
+            wheelSpeed[0] = Range.clip(speed, -0.9, 0.9) - Range.clip(turnSpeed, -0.1, 0.1);
+            wheelSpeed[1] = Range.clip(speed, -0.9, 0.9) + Range.clip(turnSpeed, -0.1, 0.1);
 
             setMotorSpeed(wheelSpeed[0], wheelSpeed[1]);
             localize();
@@ -273,52 +431,39 @@ public class BlueWarehouse extends LinearOpMode {
 
             speed = speedPercent*(0.9*(Math.cbrt(percent)));
 
-            wheelSpeed[0] = -speed;
-            wheelSpeed[1] = speed;
-
-
-            setMotorSpeed(wheelSpeed[0], wheelSpeed[1]);
-        }
-        wheelSpeed[0] = 0;
-        wheelSpeed[1] = 0;
-
-        setMotorSpeed(wheelSpeed[0], wheelSpeed[1]);
-    };
-
-    public void arcTurn (double target, double speedPercent, double error, char side) {
-        double DaS = Math.abs(AngleUnit.normalizeDegrees(target - getAbsoluteHeading()));
-        double distance = AngleUnit.normalizeDegrees(target - getAbsoluteHeading());
-        double percent = distance/DaS;
-
-        double speed = 0;
-        double[] wheelSpeed = new double[4]; //fl, fr, bl, br
-
-        while (Math.abs(distance) > error && !isStopRequested()) {
-            distance = AngleUnit.normalizeDegrees(target - getAbsoluteHeading());
-            percent = distance/DaS;
-
-            speed = speedPercent*(0.9*(Math.cbrt(percent)));
-
-            if (side == 'l') {
-                wheelSpeed[0] = speed;
-                wheelSpeed[1] = 0;
+            if (percent >= 0) {
+                speed = speedPercent*(0.8*(Math.sqrt(percent)));
+                if(Math.abs(speed) < robot.minSpeed + 0.05) {
+                    speed = robot.minSpeed+0.05;
+                }
             } else {
-                wheelSpeed[0] = 0;
-                wheelSpeed[1] = -speed;
+                speed = speedPercent*(0.8*(-Math.sqrt(Math.abs(percent))));
+                if(Math.abs(speed) < robot.minSpeed + 0.05) {
+                    speed = -robot.minSpeed-0.05;
+                }
             }
 
-            localize();
+            wheelSpeed[0] = speed;
+            wheelSpeed[1] = -speed;
+
+
             setMotorSpeed(wheelSpeed[0], wheelSpeed[1]);
         }
         wheelSpeed[0] = 0;
         wheelSpeed[1] = 0;
-        wheelSpeed[2] = 0;
-        wheelSpeed[3] = 0;
 
         setMotorSpeed(wheelSpeed[0], wheelSpeed[1]);
     };
 
-
+    public void turnTest(double target, double speedPercent) {
+        double error = Math.toDegrees(angleWrap(Math.toRadians(target - getAbsoluteHeading())));
+        final double startError = Math.abs(error);
+        while (Math.abs(error) > 4 && whileChecks()) {
+            error = Math.toDegrees(angleWrap(Math.toRadians(target - getAbsoluteHeading())));
+            setMotorSpeed((error/startError)*speedPercent, -(error/startError)*speedPercent);
+            localize();
+        }
+    }
 
     //Helper Functions
     public void setMotorSpeed(double l, double r) {
@@ -339,6 +484,55 @@ public class BlueWarehouse extends LinearOpMode {
         lastEncoderVals[0] = encoderVals[0];
         lastEncoderVals[1] = encoderVals[1];
     }
+
+    public void arcTurn (double target, double speedPercent, double error, char side) {
+        double DaS = Math.abs(AngleUnit.normalizeDegrees(target - getAbsoluteHeading()));
+        double distance = AngleUnit.normalizeDegrees(target - getAbsoluteHeading());
+        double percent = distance/DaS;
+
+        double speed = 0;
+        double[] wheelSpeed = new double[4]; //fl, fr, bl, br
+
+        while (Math.abs(distance) > error && !isStopRequested()) {
+            distance = AngleUnit.normalizeDegrees(target - getAbsoluteHeading());
+            percent = distance/DaS;
+
+            if (percent >= 0) {
+                speed = speedPercent*(0.8*(Math.sqrt(percent)));
+                if(Math.abs(speed) < robot.minSpeed + 0.075) {
+                    speed = robot.minSpeed+0.075;
+                }
+            } else {
+                speed = speedPercent*(0.8*(-Math.sqrt(Math.abs(percent))));
+                if(Math.abs(speed) < robot.minSpeed + 0.075) {
+                    speed = -robot.minSpeed-0.075;
+                }
+            }
+
+            if (side == 'l') {
+                wheelSpeed[0] = speed;
+                wheelSpeed[1] = 0;
+            } else {
+                wheelSpeed[0] = 0;
+                wheelSpeed[1] = -speed;
+            }
+
+            localize();
+            setMotorSpeed(wheelSpeed[0], wheelSpeed[1]);
+            telemetry.addData("Arc turning to:", target);
+            telemetry.addData("DaS:", DaS);
+            telemetry.addData("distance:", distance);
+            telemetry.addData("percent:", percent);
+            telemetry.addData("speed:", speed);
+            telemetry.update();
+        }
+        wheelSpeed[0] = 0;
+        wheelSpeed[1] = 0;
+        wheelSpeed[2] = 0;
+        wheelSpeed[3] = 0;
+
+        setMotorSpeed(wheelSpeed[0], wheelSpeed[1]);
+    };
 
     //OPENCV SUFFERING
     class shippingElementDetection extends OpenCvPipeline
@@ -362,20 +556,15 @@ public class BlueWarehouse extends LinearOpMode {
             double[] pixMid = yCbCrChan2Mat.get((int)(input.rows()* midPos[1]), (int)(input.cols()* midPos[0]));//gets value at circle
             valMid = (int)pixMid[0];
 
-            double[] pixLeft = yCbCrChan2Mat.get((int)(input.rows()* leftPos[1]), (int)(input.cols()* leftPos[0]));//gets value at circle
-            valLeft = (int)pixLeft[0];
-
             double[] pixRight = yCbCrChan2Mat.get((int)(input.rows()* rightPos[1]), (int)(input.cols()* rightPos[0]));//gets value at circle
             valRight = (int)pixRight[0];
 
             //create three points
             Point pointMid = new Point((int)(input.cols()* midPos[0]), (int)(input.rows()* midPos[1]));
-            Point pointLeft = new Point((int)(input.cols()* leftPos[0]), (int)(input.rows()* leftPos[1]));
             Point pointRight = new Point((int)(input.cols()* rightPos[0]), (int)(input.rows()* rightPos[1]));
 
             //draw circles on those points
             Imgproc.circle(yCbCrChan2Mat, pointMid,5, new Scalar( 255, 0, 0 ),1 );//draws circle
-            Imgproc.circle(yCbCrChan2Mat, pointLeft,5, new Scalar( 255, 0, 0 ),1 );//draws circle
             Imgproc.circle(yCbCrChan2Mat, pointRight,5, new Scalar( 255, 0, 0 ),1 );//draws circle
 
             /*
@@ -399,54 +588,16 @@ public class BlueWarehouse extends LinearOpMode {
         }
     }
 
-    //Vuforia Functions
-    OpenGLMatrix readVuforiaPosition(List<VuforiaTrackable> allTrackables) {
-        targetVisible = false;
-        for (VuforiaTrackable trackable : allTrackables) {
-            if (((VuforiaTrackableDefaultListener)trackable.getListener()).isVisible()) {
-                telemetry.addData("Visible Target", trackable.getName());
-                targetVisible = true;
-
-                // getUpdatedRobotLocation() will return null if no new information is available since
-                // the last time that call was made, or if the trackable is not currently visible.
-                OpenGLMatrix robotLocationTransform = ((VuforiaTrackableDefaultListener)trackable.getListener()).getUpdatedRobotLocation();
-                if (robotLocationTransform != null) {
-                    lastLocation = robotLocationTransform;
-                }
-                break;
-            }
-        }
-
-        // Provide feedback as to where the robot is located (if we know).
-        if (targetVisible) {
-            // express position (translation) of robot in inches.
-            VectorF translation = lastLocation.getTranslation();
-            telemetry.addData("Pos (inches)", "{X, Y, Z} = %.1f, %.1f, %.1f",
-                    translation.get(0) / mmPerInch, translation.get(1) / mmPerInch, translation.get(2) / mmPerInch);
-
-            // express the rotation of the robot in degrees.
-            Orientation rotation = Orientation.getOrientation(lastLocation, EXTRINSIC, XYZ, DEGREES);
-            telemetry.addData("Rot (deg)", "{Roll, Pitch, Heading} = %.0f, %.0f, %.0f", rotation.firstAngle, rotation.secondAngle, rotation.thirdAngle);
-        }
-        else {
-            telemetry.addData("Visible Target", "none");
-        }
-        telemetry.update();
-
-        return lastLocation;
+    private void initTfod() {
+        int tfodMonitorViewId = hardwareMap.appContext.getResources().getIdentifier(
+                "tfodMonitorViewId", "id", hardwareMap.appContext.getPackageName());
+        TFObjectDetector.Parameters tfodParameters = new TFObjectDetector.Parameters(tfodMonitorViewId);
+        tfodParameters.minResultConfidence = 0.8f;
+        tfodParameters.isModelTensorFlow2 = true;
+        tfodParameters.inputSize = 320;
+        tfod = ClassFactory.getInstance().createTFObjectDetector(tfodParameters, vuforia);
+        tfod.loadModelFromAsset(TFOD_MODEL_ASSET, LABELS);
     }
-
-    boolean whileChecks() {
-        return !isStopRequested() && opModeIsActive();
-    }
-
-    void identifyTarget(int targetIndex, String targetName, float dx, float dy, float dz, float rx, float ry, float rz) {
-        VuforiaTrackable aTarget = targets.get(targetIndex);
-        aTarget.setName(targetName);
-        aTarget.setLocation(OpenGLMatrix.translation(dx, dy, dz)
-                .multiplied(Orientation.getRotationMatrix(EXTRINSIC, XYZ, DEGREES, rx, ry, rz)));
-    }
-
 
     //FUNCTIONS NEEDED BY THE GYRO
     String formatAngle(AngleUnit angleUnit, double angle) {
@@ -463,6 +614,20 @@ public class BlueWarehouse extends LinearOpMode {
 
     private double getRelativeHeading(){
         return this.getAbsoluteHeading() - this.headingResetValue;
+    }
+
+    public double angleWrap(double radians) {
+        while (radians > Math.PI) {
+            radians -= 2*Math.PI;
+        }
+        while (radians < -Math.PI) {
+            radians += 2*Math.PI;
+        }
+        return radians;
+    }
+
+    boolean whileChecks() {
+        return !isStopRequested() && opModeIsActive();
     }
 
     public void composeTelemetry() {

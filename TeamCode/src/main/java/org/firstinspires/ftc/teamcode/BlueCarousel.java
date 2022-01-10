@@ -93,6 +93,8 @@ public class BlueCarousel extends LinearOpMode {
     public int valRight;
     public int valMid;
 
+    char pathDir;
+
     double scanDirection = -1;
 
     private int shippingElementPlacement = -1; //-1 is pre-detection; 0: left-bottom; 1: mid-mid; 2: right-top
@@ -187,12 +189,15 @@ public class BlueCarousel extends LinearOpMode {
             if (valRight < 80) {
                 telemetry.addData("position:", "Right");
                 robot.lift.setTargetPosition(robot.liftTop);
+                pathDir = 'l';
             } else if (valMid < 80){
                 telemetry.addData("position:", "Mid");
                 robot.lift.setTargetPosition(robot.liftMid);
+                pathDir = 'r';
             } else {
                 telemetry.addData("position:", "Left");
                 robot.lift.setTargetPosition(robot.liftBot);
+                pathDir = 'r';
             }
 
             telemetry.addData("valMid: ", valMid);
@@ -200,42 +205,68 @@ public class BlueCarousel extends LinearOpMode {
 
             depositcam.closeCameraDevice();
 
-            driveStraight(1600, 0.7,  10, 4);
-
-            robot.lift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            robot.lift.setPower(0.8);
-            sleep(100);
-
-            arcTurn(45, 0.7, 1, 'l');
-
-            sleep(100);
-
-            robot.deposit.setPosition(robot.depoDown);
-            sleep(100);
-            driveStraight(200, 0.7, 10, 4);
-
-            sleep(100);
-
-            driveStraight(-1650, 0.9, 10, 4);
-            robot.deposit.setPosition(robot.depoUp);
-            robot.lift.setTargetPosition(0);
-
-            sleep(100);
-
-            arcTurn(90, 0.7, 1, 'r');
-            robot.lift.setPower(0);
-
-            sleep(100);
-
-            driveStraight(-1350, 0.8, 10, 4);
-
-            sleep(100);
-
-            robot.carousel.setPower(0.5);
-
-            sleep(3000);
-
-            robot.carousel.setPower(0);
+            if (pathDir == 'l') { //This goes straight to the hub
+                driveStraight(1600, 0.7, 10, 4); //Drives straight forward
+                robot.lift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                robot.lift.setPower(0.8);
+                sleep(50);
+                arcTurn(45, 0.7, 1, 'l'); //Turns toward the hub
+                sleep(50);
+                robot.deposit.setPosition(robot.depoDown);
+                sleep(50);
+                driveStraight(200, 0.7, 10, 4); //drives to the hub
+                sleep(50);
+                driveStraight(-1950, 0.9, 10, 4); //reverses toward to the carousel
+                robot.deposit.setPosition(robot.depoUp);
+                robot.lift.setTargetPosition(0);
+                sleep(50);
+                arcTurn(90, 0.7, 1, 'r'); //turns to be parallel with the alliance wall
+                robot.lift.setPower(0);
+                sleep(100);
+                driveStraight(-1100, 0.8, 10, 4); //drives into the carousel
+                sleep(50);
+                robot.carousel.setPower(0.5);
+                sleep(3000);
+                robot.carousel.setPower(0);
+                sleep(50);
+                arcTurn(0, 1, 1, 'r'); //turns to be parallel with the back
+                sleep(50);
+                driveStraight(200, 0.7, 10, 2); //drives toward the storage square
+                sleep(50);
+                arcTurn(-90, 1, 1, 'r'); //turns into storage with deposit facing the wall
+                sleep(50);
+            } else { //this goes around the two shipping element spots closest to the hub
+                arcTurn(-40, 1, 1, 'r'); //turns away from the hub
+                sleep(50);
+                driveStraight(2500,  1, 10, 6); //drives past the barcode
+                sleep(50);
+                arcTurn(90, 1, 1, 'l'); //turns to face the hub
+                sleep(50);
+                robot.lift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                robot.lift.setPower(0.8);
+                robot.deposit.setPosition(robot.depoDownAuto);
+                driveStraight(1100, 0.8, 10, 4); //drives to the hub
+                sleep(50);
+                driveStraight(-1100, 1, 10, 4); //backs away from the hub
+                robot.lift.setTargetPosition(0);
+                robot.deposit.setPosition(robot.depoUp);
+                sleep(50);
+                arcTurn(0, 1, 1, 'l'); //turns to be parallel with the storage wall
+                sleep(50);
+                driveStraight(-1450, 0.8, 10, 3); //drives toward the blue alliance wall
+                sleep(50);
+                arcTurn(80, 0.9, 1, 'r'); //turns into the carousel
+                sleep(50);
+                robot.carousel.setPower(0.5);
+                sleep(3000);
+                robot.carousel.setPower(0);
+                sleep(1000);
+                arcTurn(0, 1, 1, 'r'); //turns to drive to the storage
+                sleep(1000);
+                driveStraight(150, 0.8, 10, 4); //drives to storage
+                sleep(1000);
+                arcTurn(-90, 1, 1, 'r'); //turns into storage
+            }
 
 
 
@@ -456,13 +487,13 @@ public class BlueCarousel extends LinearOpMode {
 
             if (percent >= 0) {
                 speed = speedPercent*(0.8*(Math.sqrt(percent)));
-                if(Math.abs(speed) < robot.minSpeed + 0.05) {
-                    speed = robot.minSpeed+0.05;
+                if(Math.abs(speed) < robot.minSpeed + 0.075) {
+                    speed = robot.minSpeed+0.075;
                 }
             } else {
                 speed = speedPercent*(0.8*(-Math.sqrt(Math.abs(percent))));
-                if(Math.abs(speed) < robot.minSpeed + 0.05) {
-                    speed = -robot.minSpeed-0.05;
+                if(Math.abs(speed) < robot.minSpeed + 0.075) {
+                    speed = -robot.minSpeed-0.075;
                 }
             }
 

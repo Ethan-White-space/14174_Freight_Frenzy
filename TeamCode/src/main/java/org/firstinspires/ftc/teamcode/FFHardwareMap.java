@@ -35,19 +35,20 @@ public class FFHardwareMap
     public final double colCamSideways = 0.26;
     public final double colCamLim[] = {0.16, 1};
     public final double depoCamStraightOut = 0.26;
-    public final double depoCamDetectPos[] = {0, 0, 0, 0}; //Blue Warehouse, Blue Carousel, Red Warehouse, Red Carousel
+    public final double depoCamDetectPos[] = {0, 0, 0, 0.175}; //Blue Warehouse, Blue Carousel, Red Warehouse, Red Carousel
 
 
     public final double depoUp = 0.223;
     public final double depoLevel = 0.74;
     public final double depoDown = 0.9;
+    public final double depoDownAuto = 0.8;
     public final double liftUp = 1900;
     public final int liftTop = 1500;
-    public final int liftMid = 950;
-    public final int liftBot = 390;
+    public final int liftMid = 775; //825
+    public final int liftBot = 220;
     public final double collectUp = 0;
     public final double collectDown = -2500;
-
+//0.17
     public final double carouselSpeed = 0.75;
 
     public final double minSpeed = 0.15;
